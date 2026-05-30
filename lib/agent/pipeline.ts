@@ -47,7 +47,7 @@ export async function loadHistory(projectId: string) {
     byRound.set(doc.round, list);
   }
 
-  const maxRound = Math.max(...byRound.keys());
+  const maxRound = Math.max(...Array.from(byRound.keys()));
   const latestRound = byRound.get(maxRound) || [];
   const rolesInRound = new Set(latestRound.map((d) => d.agent_role));
 

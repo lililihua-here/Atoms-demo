@@ -148,7 +148,7 @@ export default function McpSettings() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger>
         <Button variant="outline" size="icon">
           <Settings className="h-4 w-4" />
         </Button>
@@ -175,7 +175,7 @@ export default function McpSettings() {
                   </div>
                   <div className="flex gap-1">
                     <Tooltip>
-                      <TooltipTrigger asChild>
+                      <TooltipTrigger>
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => toggleServer(server)}>
                           {server.enabled ? <WifiOff className="h-3 w-3" /> : <Wifi className="h-3 w-3" />}
                         </Button>

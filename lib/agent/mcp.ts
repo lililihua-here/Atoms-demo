@@ -205,9 +205,7 @@ export function renderToolCatalog(toolsOrCatalog: McpTool[] | Map<string, McpToo
     tools = toolsOrCatalog;
   } else {
     tools = [];
-    for (const [, t] of toolsOrCatalog) {
-      tools.push(...t);
-    }
+    toolsOrCatalog.forEach((t) => { tools.push(...t); });
   }
   if (!tools.length) return "";
   const lines = tools.map((t) => {
