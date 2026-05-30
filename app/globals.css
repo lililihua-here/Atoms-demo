@@ -50,13 +50,13 @@
     --radius: 0;
   }
 
-  /* Border defaults to 2px hard borders */
   * {
-    @apply border-2 border-border;
+    border: 2px solid var(--border);
   }
 
   body {
-    @apply bg-background text-foreground font-serif;
+    background: var(--background);
+    color: var(--foreground);
     font-family: 'Crimson Pro', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
   }
 

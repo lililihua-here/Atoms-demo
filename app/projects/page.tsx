@@ -145,7 +145,7 @@ export default function ProjectsPage() {
         {projects.length === 0 ? (
           <div className="text-center py-24 text-muted-foreground">
             <p className="text-lg">还没有项目</p>
-            <p className="text-sm mt-1">点击"新建项目"开始你的第一个 AI 生成应用</p>
+            <p className="text-sm mt-1">点击「新建项目」开始你的第一个 AI 生成应用</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
