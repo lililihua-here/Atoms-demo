@@ -239,6 +239,9 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
                 content: `流水线执行失败: ${data.error || "未知错误"}`,
                 timestamp: new Date().toISOString(),
               }]);
+            } else if (data.code) {
+              console.log("[Pipeline] code from pipeline_done, length:", data.code.length);
+              setCode(data.code);
             }
             setBusy(false);
             break;

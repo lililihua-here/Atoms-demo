@@ -97,18 +97,20 @@ export function MessageBubble({ role, content, summary, timestamp, streaming }: 
 
         {/* Expand/Collapse */}
         {hasSummary && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-1 h-6 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => setExpanded(!expanded)}
-          >
+          <div className={isUser ? "text-right" : "text-left"}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-1 h-6 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setExpanded(!expanded)}
+            >
             {expanded ? (
               <><ChevronUp className="h-3 w-3 mr-1" /> 收起</>
             ) : (
               <><ChevronDown className="h-3 w-3 mr-1" /> 展开完整输出</>
             )}
           </Button>
+          </div>
         )}
       </div>
     </div>

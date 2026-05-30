@@ -196,9 +196,12 @@ async function runEngineerParallel(
   cbs: PipelineCallbacks
 ): Promise<string | null> {
   const contract = extractContract(architectOutput);
-  if (!contract) return null;
+  if (!contract) { console.log("runEngineerParallel: no valid contract in architect output"); return null; }
   const subtasks = buildSubtasks(contract);
-  if (subtasks.length < MIN_LEAVES_FOR_PARALLEL) return null;
+  if (subtasks.length < MIN_LEAVES_FOR_PARALLEL) {
+    console.log("runEngineerParallel: only", subtasks.length, "parallelizable leaves, need", MIN_LEAVES_FOR_PARALLEL);
+    return null;
+  }
 
   architectContractUtilities = contract.shared_utilities || [];
 
