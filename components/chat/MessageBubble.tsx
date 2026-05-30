@@ -15,6 +15,14 @@ const ROLE_ICONS: Record<string, React.ReactNode> = {
   system: <Bot className="h-4 w-4" />,
 };
 
+const ROLE_COLORS: Record<string, string> = {
+  user: "bg-primary text-primary-foreground",
+  pm: "bg-amber-100 text-amber-800",
+  architect: "bg-blue-100 text-blue-800",
+  engineer: "bg-emerald-100 text-emerald-800",
+  system: "bg-muted text-muted-foreground",
+};
+
 const ROLE_LABELS: Record<string, string> = {
   user: "你",
   pm: "产品经理",
@@ -34,39 +42,55 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ role, content, summary, timestamp, streaming }: MessageBubbleProps) {
   const [expanded, setExpanded] = useState(false);
+
   const isUser = role === "user";
-  const displayContent = summary && !expanded ? summary : content;
-  const hasMore = summary && content.length > summary.length;
+  const hasSummary = !!summary;
+  const displayContent = hasSummary && !expanded ? summary! : content;
 
   return (
-    <div className={`flex gap-3 px-4 py-3 ${isUser ? "flex-row-reverse" : ""}`}>
-      <div className={`h-8 w-8 rounded flex items-center justify-center shrink-0 border border-border ${
-        isUser ? "bg-primary text-primary-foreground" : "bg-muted"
+    <div className={`flex gap-3 px-4 py-2.5 ${isUser ? "flex-row-reverse" : ""}`}>
+      {/* Avatar */}
+      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-xs ${
+        ROLE_COLORS[role] || ROLE_COLORS.system
       }`}>
         {ROLE_ICONS[role] || <Bot className="h-4 w-4" />}
       </div>
-      <div className={`flex-1 ${isUser ? "text-right" : ""}`}>
-        <div className="flex items-center gap-2 mb-1">
+
+      {/* Content */}
+      <div className={`flex-1 min-w-0 ${isUser ? "flex flex-col items-end" : ""}`}>
+        {/* Header */}
+        <div className={`flex items-center gap-2 mb-1 ${isUser ? "flex-row-reverse" : ""}`}>
           <span className="text-xs font-medium text-muted-foreground">
             {ROLE_LABELS[role] || role}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-[10px] text-muted-foreground/60">
             {new Date(timestamp).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
           </span>
           {streaming && (
-            <span className="inline-block w-2 h-4 bg-primary animate-pulse" />
+            <span className="flex gap-0.5 items-end h-3">
+              <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+              <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+              <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            </span>
           )}
         </div>
+
+        {/* Bubble */}
         <Card className={`inline-block max-w-[85%] p-3 text-sm whitespace-pre-wrap text-left ${
-          isUser ? "bg-primary text-primary-foreground" : ""
+          isUser ? "bg-primary text-primary-foreground border-primary" : "bg-card"
         }`}>
           {displayContent}
+          {streaming && !displayContent && (
+            <span className="inline-block w-2 h-4 bg-primary/40 animate-pulse" />
+          )}
         </Card>
-        {hasMore && (
+
+        {/* Expand/Collapse */}
+        {hasSummary && (
           <Button
             variant="ghost"
             size="sm"
-            className="mt-1 h-6 text-xs"
+            className="mt-1 h-6 text-xs text-muted-foreground hover:text-foreground"
             onClick={() => setExpanded(!expanded)}
           >
             {expanded ? (

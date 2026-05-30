@@ -1,8 +1,7 @@
 // app/workspace/[projectId]/page.tsx
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
-import { useParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
 import { PipelineProgress } from "@/components/pipeline/PipelineProgress";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { PreviewPanel } from "@/components/preview/PreviewPanel";
@@ -58,7 +57,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
           });
         }
         if (msgs.length > 0) setMessages(msgs);
-      } catch {}
+      } catch (e) { console.error("Load project failed:", e); }
       setLoading(false);
     })();
   }, [projectId]);
@@ -131,7 +130,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
 
               case "agent_output": {
                 const agent = data.agent;
-                agentContent[agent] = data.chunk;
+                agentContent[agent] = (agentContent[agent] || "") + (data.chunk || "");
                 const agentId = agentMsgIds[agent];
                 setMessages((prev) => {
                   const existing = prev.find((m) => m.id === agentId);
@@ -209,10 +208,10 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
                 // Keep tasks visible
                 break;
             }
-          } catch {}
+          } catch { /* JSON parse error on malformed SSE line */ }
         }
       }
-    } catch {}
+    } catch (e) { console.error("Chat stream failed:", e); }
 
     setBusy(false);
   };
@@ -256,24 +255,35 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
       {/* Pipeline Progress */}
       <PipelineProgress stages={stages} parallelTasks={parallelTasks} />
 
-      {/* Main content area */}
-      <div className="flex-1 flex min-h-0">
+      {/* Main content area — responsive grid */}
+      <div className="flex-1 grid min-h-0"
+        style={{
+          gridTemplateColumns: memoryOpen
+            ? "1fr 240px 1fr"
+            : "1fr 1fr",
+        }}
+      >
         {/* Chat */}
-        <div className={`flex flex-col border-r border-border ${memoryOpen ? "w-[40%]" : "flex-1"}`}>
+        <div className="flex flex-col border-r border-border/20 min-w-0">
           <ChatPanel messages={messages} busy={busy} onSend={handleSend} />
         </div>
 
         {/* Memory sidebar */}
         {memoryOpen && (
-          <div className="w-[20%] border-r border-border min-w-[180px]">
+          <div className="border-r border-border/20 min-w-0 hidden md:block">
             <MemoryPanel docs={retrieved} />
           </div>
         )}
 
         {/* Preview */}
-        <div className={`${memoryOpen ? "w-[40%]" : "flex-1"}`}>
+        <div className="min-w-0 hidden md:block">
           <PreviewPanel code={code} />
         </div>
+        {memoryOpen && (
+          <div className="md:hidden border-t border-border/20">
+            <MemoryPanel docs={retrieved} />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -22,7 +22,7 @@
     --accent-blue: #3658c9;
     --border-hard: #1a1a1a;
 
-    /* Hard shadows (Ink & Parchment signature) */
+    /* Hard shadows */
     --shadow-sm: 2px 2px 0 var(--border-hard);
     --shadow-md: 4px 4px 0 var(--border-hard);
     --shadow-lg: 6px 6px 0 var(--border-hard);
@@ -50,28 +50,58 @@
     --radius: 0;
   }
 
+  /* Default border color only — width is set per-element by Tailwind */
   * {
-    border: 2px solid var(--border);
+    border-color: var(--border);
   }
 
   body {
     background: var(--background);
     color: var(--foreground);
     font-family: 'Crimson Pro', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* Card hard shadows */
-  .card, [data-slot="card"] {
+  /* Cards get hard shadow */
+  [data-slot="card"] {
     box-shadow: var(--shadow-md);
+    transition: box-shadow 0.2s, transform 0.2s;
   }
 
-  /* Button hard shadows */
-  button:not([data-no-shadow]), [data-slot="button"] {
+  /* Buttons get hard shadow + active press */
+  button:not([data-no-shadow]),
+  [data-slot="button"] {
     box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.15s, transform 0.15s;
   }
 
-  button:active:not([data-no-shadow]), [data-slot="button"]:active {
+  button:active:not([data-no-shadow]),
+  [data-slot="button"]:active {
     box-shadow: none;
     transform: translate(1px, 1px);
+  }
+
+  /* Smooth transitions for interactive elements */
+  a, button, input, textarea, select {
+    transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+  }
+
+  /* Ink & Parchment scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--parchment-dark);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--ink-muted);
+    border-radius: 0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-light);
   }
 }

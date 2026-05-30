@@ -8,9 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
-import { Loader2, Plus, Edit3, Trash2, LogOut, Sparkles } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Plus, Edit3, Trash2, LogOut, Code2, Clock } from "lucide-react";
 
 interface Project {
   id: string;
@@ -103,89 +108,103 @@ export default function ProjectsPage() {
   if (!userChecked || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/50" />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border px-8 py-4 flex items-center justify-between">
+      {/* Header */}
+      <header className="border-b border-border/20 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 flex items-center justify-center border-2 border-border bg-primary text-primary-foreground">
-            <Sparkles className="h-5 w-5" />
+          <div className="h-9 w-9 rounded-full flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, var(--ink) 0%, var(--ink-light) 100%)" }}>
+            <svg className="h-5 w-5 text-[var(--parchment)]" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="12" r="3" />
+            </svg>
           </div>
-          <h1 className="text-xl font-serif font-bold">Atoms Studio</h1>
+          <h1 className="text-lg font-bold">Atoms Studio</h1>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleLogout}>
-          <LogOut className="h-4 w-4 mr-1" /> 退出
+        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
+          <LogOut className="h-4 w-4 mr-1.5" /> 退出
         </Button>
       </header>
 
-      <main className="max-w-5xl mx-auto px-8 py-12">
-        <div className="flex items-center justify-between mb-8">
+      <main className="max-w-5xl mx-auto px-6 py-10">
+        {/* Page header */}
+        <div className="flex items-center justify-between mb-10">
           <div>
-            <h2 className="text-3xl font-serif font-bold">我的项目</h2>
-            <p className="text-muted-foreground mt-1">
-              用自然语言描述需求,AI 协作为你生成网页应用
+            <h2 className="text-3xl font-bold mb-1">我的项目</h2>
+            <p className="text-muted-foreground text-sm">
+              用自然语言描述需求，AI 协作为你生成网页应用
             </p>
           </div>
           <Button
-            onClick={() => {
-              setName("");
-              setDescription("");
-              setCreateOpen(true);
-            }}
-            size="lg"
+            onClick={() => { setName(""); setDescription(""); setCreateOpen(true); }}
+            className="h-11 px-5"
           >
-            <Plus className="h-5 w-5 mr-1" /> 新建项目
+            <Plus className="h-5 w-5 mr-1.5" /> 新建项目
           </Button>
         </div>
 
+        {/* Empty state */}
         {projects.length === 0 ? (
-          <div className="text-center py-24 text-muted-foreground">
-            <p className="text-lg">还没有项目</p>
-            <p className="text-sm mt-1">点击「新建项目」开始你的第一个 AI 生成应用</p>
+          <div className="text-center py-20">
+            <div className="h-24 w-24 mx-auto mb-6 rounded-full flex items-center justify-center bg-muted/50">
+              <Code2 className="h-10 w-10 text-muted-foreground/40" />
+            </div>
+            <p className="text-xl font-bold text-foreground mb-1">还没有项目</p>
+            <p className="text-muted-foreground text-sm mb-6">
+              点击「新建项目」开始你的第一个 AI 生成应用
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => { setName(""); setDescription(""); setCreateOpen(true); }}
+            >
+              <Plus className="h-4 w-4 mr-1.5" /> 创建第一个项目
+            </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {projects.map((p) => (
               <Card
                 key={p.id}
-                className="p-5 cursor-pointer hover:shadow-[var(--shadow-md)] transition-shadow"
+                className="group p-5 cursor-pointer hover:-translate-y-0.5"
                 onClick={() => router.push(`/workspace/${p.id}`)}
               >
-                <div className="flex items-start justify-between">
-                  <h3 className="font-serif font-bold text-lg truncate flex-1">{p.name}</h3>
-                  <div className="flex gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="font-bold text-lg truncate flex-1 pr-2">{p.name}</h3>
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => e.stopPropagation()}>
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7"
-                      onClick={() => {
-                        setName(p.name);
-                        setDescription(p.description);
-                        setEditOpen(p);
-                      }}
+                      className="h-8 w-8"
+                      onClick={() => { setName(p.name); setDescription(p.description); setEditOpen(p); }}
                     >
-                      <Edit3 className="h-3 w-3" />
+                      <Edit3 className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7 text-red-500"
+                      className="h-8 w-8 text-destructive"
                       onClick={() => setDeleteOpen(p)}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
-                {p.description && (
-                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{p.description}</p>
+                {p.description ? (
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{p.description}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground/50 italic mb-3">暂无描述</p>
                 )}
-                <p className="text-xs text-muted-foreground mt-3">
-                  {new Date(p.created_at).toLocaleDateString("zh-CN")}
-                </p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {new Date(p.created_at).toLocaleDateString("zh-CN", {
+                    year: "numeric", month: "short", day: "numeric",
+                  })}
+                </div>
               </Card>
             ))}
           </div>
@@ -198,36 +217,61 @@ export default function ProjectsPage() {
           <DialogHeader>
             <DialogTitle>新建项目</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <Input placeholder="项目名称" value={name} onChange={(e) => setName(e.target.value)} />
-            <Textarea placeholder="项目描述（可选）" value={description} onChange={(e) => setDescription(e.target.value)} />
-            <Button onClick={handleCreate} disabled={saving || !name.trim()} className="w-full">
+          <div className="space-y-4 py-2">
+            <Input
+              placeholder="项目名称"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+            />
+            <Textarea
+              placeholder="项目描述（可选）"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>取消</Button>
+            <Button onClick={handleCreate} disabled={saving || !name.trim()}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               创建并进入
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={!!editOpen} onOpenChange={() => setEditOpen(null)}>
+      <Dialog open={!!editOpen} onOpenChange={(open) => !open && setEditOpen(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>编辑项目</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <Input placeholder="项目名称" value={name} onChange={(e) => setName(e.target.value)} />
-            <Textarea placeholder="项目描述" value={description} onChange={(e) => setDescription(e.target.value)} />
-            <Button onClick={handleUpdate} disabled={saving || !name.trim()} className="w-full">
+          <div className="space-y-4 py-2">
+            <Input
+              placeholder="项目名称"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Textarea
+              placeholder="项目描述"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(null)}>取消</Button>
+            <Button onClick={handleUpdate} disabled={saving || !name.trim()}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               保存
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteOpen} onOpenChange={() => setDeleteOpen(null)}>
+      <AlertDialog open={!!deleteOpen} onOpenChange={(open) => !open && setDeleteOpen(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
@@ -235,12 +279,12 @@ export default function ProjectsPage() {
               确定要删除项目「{deleteOpen?.name}」吗？此操作不可撤销。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="flex gap-2 justify-end">
+          <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               删除
             </AlertDialogAction>
-          </div>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
