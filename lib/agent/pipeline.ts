@@ -315,8 +315,8 @@ export async function runPipeline(
   // Build MCP tool catalog once
   let toolCatalog = "";
   try {
-    const catalog = await buildToolCatalog();
-    if (catalog.size > 0) toolCatalog = renderToolCatalog(catalog);
+    const { tools } = await buildToolCatalog();
+    if (tools.length > 0) toolCatalog = renderToolCatalog(tools);
   } catch {}
 
   let accumulatedToolResults = "";
