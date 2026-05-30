@@ -271,16 +271,39 @@ function buildSubtaskContent(
 
 // Extract JSX code from markdown output
 export function extractCode(markdown: string): string | null {
-  // Try fenced code block with or without language specifier
-  const fenced = markdown.match(/```(?:jsx|js|javascript|tsx|react)?\s*\n?([\s\S]*?)```/i);
-  if (fenced && fenced[1] && fenced[1].trim().length > 20) return fenced[1].trim();
-  // Try any fenced block as fallback
-  const anyFence = markdown.match(/```\s*\n([\s\S]*?)```/);
-  if (anyFence && anyFence[1] && anyFence[1].trim().length > 20) return anyFence[1].trim();
-  // Raw code detection
-  if (/function\s+App\s*\(/.test(markdown) || /const\s+App\s*=/.test(markdown)) {
-    return markdown.trim();
+  if (!markdown) return null;
+
+  // Try fenced code block with language specifier
+  let m = markdown.match(/```(?:jsx|js|javascript|tsx|react)\s*\n([\s\S]*?)```/i);
+  if (m && m[1] && m[1].trim().length > 20) {
+    console.log("extractCode: found fenced block with lang, length:", m[1].trim().length);
+    return m[1].trim();
   }
+
+  // Try any fenced block (no language specifier)
+  m = markdown.match(/```\s*\n([\s\S]*?)```/);
+  if (m && m[1] && m[1].trim().length > 20) {
+    console.log("extractCode: found fenced block without lang, length:", m[1].trim().length);
+    return m[1].trim();
+  }
+
+  // Try to extract from "function App" or "const App" — remove markdown around it
+  const appIdx = markdown.search(/(?:^|\n)\s*(?:function\s+App\s*\(|const\s+App\s*=)/m);
+  if (appIdx >= 0) {
+    const code = markdown.substring(appIdx).trim();
+    console.log("extractCode: raw app code detected, length:", code.length);
+    return code;
+  }
+
+  // Last resort: any function definition (for single-component mode)
+  const fnIdx = markdown.search(/(?:^|\n)\s*function\s+\w+\s*\(/m);
+  if (fnIdx >= 0) {
+    const code = markdown.substring(fnIdx).trim();
+    console.log("extractCode: raw function detected, length:", code.length);
+    return code;
+  }
+
+  console.log("extractCode: no code found in output. First 200 chars:", markdown.substring(0, 200));
   return null;
 }
 

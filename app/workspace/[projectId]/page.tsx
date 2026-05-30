@@ -176,14 +176,26 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
                     : m
                 )
               );
-              // Fallback: if engineer finished and code not set, try extracting from output
+              // Fallback: if engineer finished, try extracting code from output
               if (data.agent === "engineer") {
                 const engContent = agentContent[data.agent] || "";
                 if (engContent) {
-                  const fenced = engContent.match(/```(?:jsx|js|javascript|tsx|react)?\s*\n?([\s\S]*?)```/i);
+                  let extracted = "";
+                  // Try fenced blocks
+                  let fenced = engContent.match(/```(?:jsx|js|javascript|tsx|react)\s*\n([\s\S]*?)```/i);
+                  if (!fenced) fenced = engContent.match(/```\s*\n([\s\S]*?)```/);
                   if (fenced && fenced[1] && fenced[1].trim().length > 20) {
-                    console.log("[Pipeline] Extracted code from engineer output, length:", fenced[1].trim().length);
-                    setCode(fenced[1].trim());
+                    extracted = fenced[1].trim();
+                  } else {
+                    // Try raw function detection
+                    const appIdx = engContent.search(/(?:^|\n)\s*(?:function\s+App\s*\(|const\s+App\s*=)/m);
+                    if (appIdx >= 0) extracted = engContent.substring(appIdx).trim();
+                  }
+                  if (extracted) {
+                    console.log("[Pipeline] Fallback extracted code, length:", extracted.length);
+                    setCode(extracted);
+                  } else {
+                    console.warn("[Pipeline] No code found in engineer output");
                   }
                 }
               }
