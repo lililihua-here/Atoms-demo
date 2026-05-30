@@ -112,9 +112,13 @@ function streamAgent(
     let acc = "";
     cbs.onStageStart(stage);
     try {
+      // Stage-specific token limits to stay under Vercel 60s timeout
+      const stageMaxTokens: Record<string, number> = { pm: 500, architect: 800, engineer: 4096 };
       for await (const event of streamLLM({
         system,
         messages: [{ role: "user", content: userContent }],
+        max_tokens: stageMaxTokens[stage] ?? 2048,
+        temperature: 0.3,
       })) {
         if (event.type === "text_delta") {
           acc += event.text;
