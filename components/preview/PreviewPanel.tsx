@@ -4,7 +4,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Code2, Play } from "lucide-react";
+import { RefreshCw, Code2, Play, Download } from "lucide-react";
+import JSZip from "jszip";
 
 interface PreviewPanelProps {
   code: string;
@@ -81,6 +82,19 @@ export function PreviewPanel({ code }: PreviewPanelProps) {
     [code]
   );
 
+  const handleExport = async () => {
+    if (!code) return;
+    const zip = new JSZip();
+    zip.file("index.html", buildSrcDoc(code));
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "atoms-project.zip";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <Tabs defaultValue="preview" className="flex-1 flex flex-col min-h-0">
@@ -101,6 +115,16 @@ export function PreviewPanel({ code }: PreviewPanelProps) {
             title="刷新预览"
           >
             <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7"
+            onClick={handleExport}
+            disabled={!code}
+            title="导出项目"
+          >
+            <Download className="h-3.5 w-3.5" />
           </Button>
         </div>
         <TabsContent value="preview" className="flex-1 m-0 min-h-0 bg-white">
