@@ -12,7 +12,8 @@ import { Brain, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import type { Message, StageState, ParallelTaskState } from "@/lib/models/types";
+import { classifyIntent } from "@/lib/agent/classify";
+import type { Message, StageState, ParallelTaskState, AgentRole } from "@/lib/models/types";
 
 function WorkspaceContent({ projectId }: { projectId: string }) {
   const router = useRouter();
@@ -109,33 +110,17 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
     })();
   }, [projectId]);
 
-  const handleSend = async (message: string) => {
-    if (busy) return;
-    setBusy(true);
-    setParallelTasks([]);
-    setRetrieved([]);
-    setStages((s) => s.map((st) => ({ ...st, status: "pending" as const })));
-
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: message,
-      timestamp: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
-
-    // Placeholder messages for each agent stage
-    const agentMsgIds: Record<string, string> = {
-      pm: `agent-${Date.now()}-pm`,
-      architect: `agent-${Date.now()}-architect`,
-      engineer: `agent-${Date.now()}-engineer`,
-    };
-
+  // Reusable SSE stream caller — makes one API call for given roles
+  const streamChat = async (
+    rolesParam: AgentRole[],
+    agentMsgIds: Record<string, string>,
+    agentContent: Record<string, string>
+  ): Promise<boolean> => {
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, message }),
+        body: JSON.stringify({ projectId, message: messages.find(m => m.role === "user")?.content || "", roles: rolesParam }),
       });
 
       if (!res.ok) {
@@ -148,7 +133,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
           timestamp: new Date().toISOString(),
         }]);
         setBusy(false);
-        return;
+        return false;
       }
 
       const reader = res.body!.getReader();
@@ -156,128 +141,75 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
       let buffer = "";
       let currentEvent = "";
 
-      // Track streaming content per agent
-      const agentContent: Record<string, string> = {};
-
-      // Process a single SSE event by dispatching to the switch handler
       const dispatchEvent = (eventType: string, data: any) => {
         switch (eventType || data.event) {
-          case "connected":
-            console.log("[Pipeline] Stream connected, round:", data.round);
-            break;
-
+          case "connected": break;
           case "stage_start":
             setStages((s) =>
-              s.map((st) =>
-                st.stage === data.agent ? { ...st, status: "running" as const } : st
-              )
+              s.map((st) => st.stage === data.agent ? { ...st, status: "running" as const } : st)
             );
             break;
-
           case "agent_output": {
             const agent = data.agent;
-            // Server sends accumulated full text, just store it
             agentContent[agent] = data.chunk || "";
             const fullText = agentContent[agent];
             const agentId = agentMsgIds[agent];
+            if (!agentId) break;
             setMessages((prev) => {
               const existing = prev.find((m) => m.id === agentId);
-              if (existing) {
-                return prev.map((m) =>
-                  m.id === agentId ? { ...m, content: fullText, streaming: true } : m
-                );
-              }
-              return [
-                ...prev,
-                {
-                  id: agentId,
-                  role: agent as any,
-                  content: fullText,
-                  timestamp: new Date().toISOString(),
-                  streaming: true,
-                },
-              ];
+              if (existing) return prev.map((m) => m.id === agentId ? { ...m, content: fullText, streaming: true } : m);
+              return [...prev, { id: agentId, role: agent as any, content: fullText, timestamp: new Date().toISOString(), streaming: true }];
             });
             break;
           }
-
           case "code_generated":
             console.log("[Pipeline] Code received, length:", data.code?.length || 0);
             setCode(data.code);
             break;
-
           case "stage_done":
             setStages((s) =>
-              s.map((st) =>
-                st.stage === data.agent
-                  ? { ...st, status: "completed" as const, summary: data.summary }
-                  : st
-              )
+              s.map((st) => st.stage === data.agent ? { ...st, status: "completed" as const, summary: data.summary } : st)
             );
             {
               const agentId = agentMsgIds[data.agent];
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === agentId
-                    ? { ...m, content: agentContent[data.agent] || m.content, summary: data.summary, streaming: false }
-                    : m
-                )
-              );
-              // Fallback: if engineer finished, try extracting code from output
+              if (agentId) {
+                setMessages((prev) =>
+                  prev.map((m) => m.id === agentId ? { ...m, content: agentContent[data.agent] || m.content, summary: data.summary, streaming: false } : m)
+                );
+              }
               if (data.agent === "engineer") {
                 const engContent = agentContent[data.agent] || "";
                 if (engContent) {
                   let extracted = "";
-                  // Try fenced blocks
                   let fenced = engContent.match(/```(?:jsx|js|javascript|tsx|react)\s*\n([\s\S]*?)```/i);
                   if (!fenced) fenced = engContent.match(/```\s*\n([\s\S]*?)```/);
-                  if (fenced && fenced[1] && fenced[1].trim().length > 20) {
-                    extracted = fenced[1].trim();
-                  } else {
-                    // Try raw function detection
+                  if (fenced && fenced[1] && fenced[1].trim().length > 20) extracted = fenced[1].trim();
+                  else {
                     const appIdx = engContent.search(/(?:^|\n)\s*(?:function\s+App\s*\(|const\s+App\s*=)/m);
                     if (appIdx >= 0) extracted = engContent.substring(appIdx).trim();
                   }
-                  if (extracted) {
-                    console.log("[Pipeline] Fallback extracted code, length:", extracted.length);
-                    setCode(extracted);
-                  } else {
-                    console.warn("[Pipeline] No code found in engineer output");
-                  }
+                  if (extracted) { console.log("[Pipeline] Fallback extracted code, length:", extracted.length); setCode(extracted); }
                 }
               }
             }
             break;
-
           case "agent_error":
             setStages((s) =>
-              s.map((st) =>
-                st.stage === data.agent ? { ...st, status: "failed" as const } : st
-              )
+              s.map((st) => st.stage === data.agent ? { ...st, status: "failed" as const } : st)
             );
             break;
-
           case "retrieve":
             setRetrieved(data.docs || []);
             break;
-
           case "parallel_start":
             setParallelTasks(data.tasks || []);
             break;
-
           case "parallel_update":
             setParallelTasks((prev) =>
-              prev.map((t) =>
-                t.componentName === data.task.componentName
-                  ? { ...t, status: data.task.status }
-                  : t
-              )
+              prev.map((t) => t.componentName === data.task.componentName ? { ...t, status: data.task.status } : t)
             );
             break;
-
-          case "parallel_end":
-            break;
-
+          case "parallel_end": break;
           case "pipeline_done":
             if (data.status === "failed") {
               setMessages((prev) => [...prev, {
@@ -299,35 +231,61 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-
-        // SSE state machine: extract event + data pairs
         while (buffer.includes("\n")) {
           const newlineIdx = buffer.indexOf("\n");
           const line = buffer.substring(0, newlineIdx).trimEnd();
           buffer = buffer.substring(newlineIdx + 1);
-
-          if (line === "") {
-            // Empty line = end of event, dispatch
-            continue;
-          }
-
-          if (line.startsWith("event: ")) {
-            currentEvent = line.substring(7).trim();
-          } else if (line.startsWith("data: ")) {
+          if (line === "") continue;
+          if (line.startsWith("event: ")) currentEvent = line.substring(7).trim();
+          else if (line.startsWith("data: ")) {
             const dataStr = line.substring(6);
             if (dataStr === "[DONE]") continue;
-            console.log("[SSE]", currentEvent || "(no-event)", dataStr.substring(0, 80));
-            try {
-              const data = JSON.parse(dataStr);
-              dispatchEvent(currentEvent, data);
-            } catch { console.warn("[SSE] JSON parse failed:", dataStr.substring(0, 80)); }
+            try { const data = JSON.parse(dataStr); dispatchEvent(currentEvent, data); } catch { /* skip */ }
             currentEvent = "";
           }
         }
       }
-    } catch (e) { console.error("Chat stream failed:", e); }
+      return true;
+    } catch (e) { console.error("Chat stream failed:", e); setBusy(false); return false; }
+  };
 
-    setBusy(false);
+  const handleSend = async (message: string) => {
+    if (busy) return;
+    setBusy(true);
+    setParallelTasks([]);
+    setRetrieved([]);
+    setStages((s) => s.map((st) => ({ ...st, status: "pending" as const })));
+
+    setMessages((prev) => [...prev, {
+      id: Date.now().toString(),
+      role: "user",
+      content: message,
+      timestamp: new Date().toISOString(),
+    }]);
+
+    // Shared IDs and content accumulator across rounds
+    const ts = Date.now();
+    const agentMsgIds: Record<string, string> = {
+      pm: `agent-${ts}-pm`,
+      architect: `agent-${ts}-architect`,
+      engineer: `agent-${ts}-engineer`,
+    };
+    const agentContent: Record<string, string> = {};
+
+    const allRoles = classifyIntent(message);
+    const preRoles = allRoles.filter(r => r !== "engineer");
+    const hasEngineer = allRoles.includes("engineer");
+
+    // Round 1: non-engineer agents (PM, Architect) — fast, <20s
+    if (preRoles.length > 0) {
+      const ok = await streamChat(preRoles, agentMsgIds, agentContent);
+      if (!ok) return;
+    }
+
+    // Round 2: Engineer — gets full 60s budget
+    if (hasEngineer) {
+      await streamChat(["engineer"], agentMsgIds, agentContent);
+    }
   };
 
   const handleResume = () => {

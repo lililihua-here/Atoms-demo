@@ -1,7 +1,8 @@
 // app/api/chat/route.ts
 import { NextRequest } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { runPipeline, loadHistory, classifyIntent } from "@/lib/agent/pipeline";
+import { runPipeline, loadHistory } from "@/lib/agent/pipeline";
+import { classifyIntent } from "@/lib/agent/classify";
 import type { PipelineCallbacks, AgentRole, ParallelTaskState, AgentDocument } from "@/lib/models/types";
 
 function sse(event: string, data: any): string {
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const { projectId, message } = await req.json();
+  const { projectId, message, roles: clientRoles } = await req.json();
   if (!projectId || !message) {
     return new Response(JSON.stringify({ error: "Missing projectId or message" }), {
       status: 400,
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
         enqueue("connected", { projectId, round });
         console.log("Pipeline starting:", { projectId, round, message: message.substring(0, 50) });
         // Classify intent and get previous code for iteration
-        const roles = classifyIntent(message);
+        const roles = clientRoles || classifyIntent(message);
         let previousCode: string | undefined;
         if (project.generated_code) {
           previousCode = project.generated_code;
