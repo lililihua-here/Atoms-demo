@@ -7,7 +7,13 @@ function requireEnv(key: string): string {
   return value;
 }
 
-const anthropic = new Anthropic({ apiKey: requireEnv("ANTHROPIC_API_KEY") });
+let _anthropic: Anthropic | null = null;
+function getAnthropic(): Anthropic {
+  if (!_anthropic) {
+    _anthropic = new Anthropic({ apiKey: requireEnv("ANTHROPIC_API_KEY") });
+  }
+  return _anthropic;
+}
 
 const DEFAULT_MODEL = "claude-sonnet-4-20250514";
 const MAX_RETRIES = 3;
@@ -33,7 +39,7 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMCallResult> {
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      const res = await anthropic.messages.create({
+      const res = await getAnthropic().messages.create({
         model: DEFAULT_MODEL,
         max_tokens: opts.max_tokens ?? 4096,
         temperature: opts.temperature ?? 0.7,
@@ -64,7 +70,7 @@ export async function* streamLLM(
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      const stream = anthropic.messages.stream({
+      const stream = getAnthropic().messages.stream({
         model: DEFAULT_MODEL,
         max_tokens: opts.max_tokens ?? 4096,
         temperature: opts.temperature ?? 0.7,
