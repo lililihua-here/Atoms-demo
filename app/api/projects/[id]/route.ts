@@ -23,7 +23,7 @@ export async function GET(
   // Include latest documents
   const { data: docs } = await supabase
     .from("agent_documents")
-    .select("id, agent_role, summary, tags, round, created_at")
+    .select("id, agent_role, content, summary, tags, round, created_at")
     .eq("project_id", params.id)
     .order("created_at", { ascending: true });
 

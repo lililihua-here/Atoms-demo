@@ -44,10 +44,8 @@ export function MessageBubble({ role, content, summary, timestamp, streaming }: 
   const [expanded, setExpanded] = useState(false);
 
   const isUser = role === "user";
-  // Fallback summary for long content without explicit summary
-  const effectiveSummary = summary || (content && content.length > 200 ? content.substring(0, 200) + "…" : null);
-  const hasSummary = !!effectiveSummary;
-  const displayContent = hasSummary && !expanded ? effectiveSummary! : content;
+  const hasSummary = !!summary;
+  const displayContent = hasSummary && !expanded ? summary! : content;
 
   // Esc to collapse expanded message
   useEffect(() => {
