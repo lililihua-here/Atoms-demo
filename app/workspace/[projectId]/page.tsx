@@ -373,7 +373,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
 
         {/* Preview */}
         <div className="min-w-0 h-full overflow-hidden hidden md:block">
-          <PreviewPanel code={code} />
+          <PreviewPanel code={code} projectName={projectName} />
         </div>
         {memoryOpen && (
           <div className="md:hidden border-t border-border/20">

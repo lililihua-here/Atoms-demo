@@ -9,6 +9,7 @@ import JSZip from "jszip";
 
 interface PreviewPanelProps {
   code: string;
+  projectName?: string;
 }
 
 const EMPTY_HTML = `<!DOCTYPE html>
@@ -90,7 +91,7 @@ export function PreviewPanel({ code }: PreviewPanelProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "atoms-project.zip";
+    a.download = `${projectName || "atoms-project"}.zip`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -107,25 +108,27 @@ export function PreviewPanel({ code }: PreviewPanelProps) {
               <Code2 className="h-3 w-3 mr-1" /> 源码
             </TabsTrigger>
           </TabsList>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7"
-            onClick={() => setKey((k) => k + 1)}
-            title="刷新预览"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7"
-            onClick={handleExport}
-            disabled={!code}
-            title="导出项目"
-          >
-            <Download className="h-3.5 w-3.5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={() => setKey((k) => k + 1)}
+              title="刷新预览"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={handleExport}
+              disabled={!code}
+              title="导出项目"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
         <TabsContent value="preview" className="flex-1 m-0 min-h-0 bg-white">
           <iframe
