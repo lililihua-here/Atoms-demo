@@ -1,7 +1,7 @@
 // components/chat/MessageBubble.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, User, Bot, Sparkles, PenTool, Code2 } from "lucide-react";
@@ -46,6 +46,16 @@ export function MessageBubble({ role, content, summary, timestamp, streaming }: 
   const isUser = role === "user";
   const hasSummary = !!summary;
   const displayContent = hasSummary && !expanded ? summary! : content;
+
+  // Esc to collapse expanded message
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expanded]);
 
   return (
     <div className={`flex gap-3 px-4 py-2.5 ${isUser ? "flex-row-reverse" : ""}`}>

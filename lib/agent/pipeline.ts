@@ -238,6 +238,16 @@ async function runEngineerParallel(
     return null;
   }
 
+  // Check that we got at least one real component function (not just placeholders)
+  const realCount = contract.components
+    .filter((c) => c.type === "leaf")
+    .filter((c) => merged.includes(`function ${c.name}`)).length;
+  if (realCount === 0) {
+    console.log("All parallel components are placeholders, falling back to serial");
+    cbs.onParallelEnd();
+    return null;
+  }
+
   for (const r of results) {
     if (!r.ok) cbs.onParallelUpdate({ componentName: r.componentName, status: "placeholder" });
   }
@@ -261,8 +271,13 @@ function buildSubtaskContent(
 
 // Extract JSX code from markdown output
 export function extractCode(markdown: string): string | null {
-  const fenced = markdown.match(/```(?:jsx|js|javascript|tsx)?\s*\n?([\s\S]*?)```/i);
-  if (fenced && fenced[1]) return fenced[1].trim();
+  // Try fenced code block with or without language specifier
+  const fenced = markdown.match(/```(?:jsx|js|javascript|tsx|react)?\s*\n?([\s\S]*?)```/i);
+  if (fenced && fenced[1] && fenced[1].trim().length > 20) return fenced[1].trim();
+  // Try any fenced block as fallback
+  const anyFence = markdown.match(/```\s*\n([\s\S]*?)```/);
+  if (anyFence && anyFence[1] && anyFence[1].trim().length > 20) return anyFence[1].trim();
+  // Raw code detection
   if (/function\s+App\s*\(/.test(markdown) || /const\s+App\s*=/.test(markdown)) {
     return markdown.trim();
   }

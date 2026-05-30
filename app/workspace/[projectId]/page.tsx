@@ -129,8 +129,8 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
 
           case "agent_output": {
             const agent = data.agent;
-            // Accumulate full text per agent
-            agentContent[agent] = (agentContent[agent] || "") + (data.chunk || "");
+            // Server sends accumulated full text, just store it
+            agentContent[agent] = data.chunk || "";
             const fullText = agentContent[agent];
             const agentId = agentMsgIds[agent];
             setMessages((prev) => {
