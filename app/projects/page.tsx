@@ -62,22 +62,28 @@ export default function ProjectsPage() {
   const handleCreate = async () => {
     if (!name.trim()) return;
     setSaving(true);
-    const { data } = await supabase
-      .from("projects")
-      .insert({
-        name: name.trim(),
-        description: description.trim(),
-        shared_json: { version: 0, round: 0 },
-      })
-      .select()
-      .single();
-    setSaving(false);
-    if (data) {
-      setCreateOpen(false);
-      setName("");
-      setDescription("");
-      router.push(`/workspace/${data.id}`);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data } = await supabase
+        .from("projects")
+        .insert({
+          user_id: user?.id,
+          name: name.trim(),
+          description: description.trim(),
+          shared_json: { version: 0, round: 0 },
+        })
+        .select()
+        .single();
+      if (data) {
+        setCreateOpen(false);
+        setName("");
+        setDescription("");
+        router.push(`/workspace/${data.id}`);
+      }
+    } catch (e) {
+      console.error("Create project failed:", e);
     }
+    setSaving(false);
   };
 
   const handleUpdate = async () => {
