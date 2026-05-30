@@ -109,17 +109,19 @@ export default function McpSettings() {
       enabled: cfg.enabled,
     });
     if (cfg.id) {
-      await supabase.from("agent_documents").update({ content, summary: cfg.name }).eq("id", cfg.id);
+      const { error: updateErr } = await supabase.from("agent_documents").update({ content, summary: cfg.name }).eq("id", cfg.id);
+      if (updateErr) { console.error("MCP update failed:", updateErr); return; }
     } else {
       const pid = systemProjectId || (await ensureSystemProject());
       if (!pid) { console.error("No system project for MCP config"); return; }
-      await supabase.from("agent_documents").insert({
+      const { error: insertErr } = await supabase.from("agent_documents").insert({
         project_id: pid,
         agent_role: MCP_ROLE,
         content,
         summary: cfg.name,
         round: 0,
       });
+      if (insertErr) { console.error("MCP insert failed:", insertErr); return; }
     }
     setEditing(null);
     loadServers();

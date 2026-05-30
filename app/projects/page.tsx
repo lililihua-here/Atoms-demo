@@ -51,7 +51,7 @@ export default function ProjectsPage() {
       .from("projects")
       .select("*")
       .order("created_at", { ascending: false });
-    setProjects((data || []) as Project[]);
+    setProjects(((data || []) as Project[]).filter((p) => p.name !== "_mcp_config"));
     setLoading(false);
   }, [supabase]);
 

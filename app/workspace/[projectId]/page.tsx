@@ -107,132 +107,141 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let currentEvent = "";
 
       // Track streaming content per agent
       const agentContent: Record<string, string> = {};
+
+      // Process a single SSE event by dispatching to the switch handler
+      const dispatchEvent = (eventType: string, data: any) => {
+        switch (eventType || data.event) {
+          case "stage_start":
+            setStages((s) =>
+              s.map((st) =>
+                st.stage === data.agent ? { ...st, status: "running" as const } : st
+              )
+            );
+            break;
+
+          case "agent_output": {
+            const agent = data.agent;
+            // Accumulate full text per agent
+            agentContent[agent] = (agentContent[agent] || "") + (data.chunk || "");
+            const fullText = agentContent[agent];
+            const agentId = agentMsgIds[agent];
+            setMessages((prev) => {
+              const existing = prev.find((m) => m.id === agentId);
+              if (existing) {
+                return prev.map((m) =>
+                  m.id === agentId ? { ...m, content: fullText, streaming: true } : m
+                );
+              }
+              return [
+                ...prev,
+                {
+                  id: agentId,
+                  role: agent as any,
+                  content: fullText,
+                  timestamp: new Date().toISOString(),
+                  streaming: true,
+                },
+              ];
+            });
+            break;
+          }
+
+          case "stage_done": {
+            setStages((s) =>
+              s.map((st) =>
+                st.stage === data.agent
+                  ? { ...st, status: "completed" as const, summary: data.summary }
+                  : st
+              )
+            );
+            const agentId = agentMsgIds[data.agent];
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === agentId
+                  ? { ...m, content: agentContent[data.agent] || m.content, summary: data.summary, streaming: false }
+                  : m
+              )
+            );
+            break;
+          }
+
+          case "code_generated":
+            setCode(data.code);
+            break;
+
+          case "agent_error":
+            setStages((s) =>
+              s.map((st) =>
+                st.stage === data.agent ? { ...st, status: "failed" as const } : st
+              )
+            );
+            break;
+
+          case "retrieve":
+            setRetrieved(data.docs || []);
+            break;
+
+          case "parallel_start":
+            setParallelTasks(data.tasks || []);
+            break;
+
+          case "parallel_update":
+            setParallelTasks((prev) =>
+              prev.map((t) =>
+                t.componentName === data.task.componentName
+                  ? { ...t, status: data.task.status }
+                  : t
+              )
+            );
+            break;
+
+          case "parallel_end":
+            break;
+
+          case "pipeline_done":
+            if (data.status === "failed") {
+              setMessages((prev) => [...prev, {
+                id: `error-${Date.now()}`,
+                role: "system",
+                content: `流水线执行失败: ${data.error || "未知错误"}`,
+                timestamp: new Date().toISOString(),
+              }]);
+            }
+            setBusy(false);
+            break;
+        }
+      };
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
 
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
+        // SSE state machine: extract event + data pairs
+        while (buffer.includes("\n")) {
+          const newlineIdx = buffer.indexOf("\n");
+          const line = buffer.substring(0, newlineIdx).trimEnd();
+          buffer = buffer.substring(newlineIdx + 1);
 
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const eventType = line.startsWith("event: ")
-            ? lines[lines.indexOf(line) - 1]?.replace("event: ", "")
-            : "";
+          if (line === "") {
+            // Empty line = end of event, dispatch
+            continue;
+          }
 
-          const dataStr = line.replace(/^(event: .*\n)?data: /, "");
-          if (!dataStr || dataStr === "[DONE]") continue;
-
-          try {
-            const data = JSON.parse(dataStr);
-            const event = eventType || data.event || "";
-
-            switch (event || data.event) {
-              case "stage_start":
-                setStages((s) =>
-                  s.map((st) =>
-                    st.stage === data.agent ? { ...st, status: "running" as const } : st
-                  )
-                );
-                break;
-
-              case "agent_output": {
-                const agent = data.agent;
-                agentContent[agent] = (agentContent[agent] || "") + (data.chunk || "");
-                const agentId = agentMsgIds[agent];
-                setMessages((prev) => {
-                  const existing = prev.find((m) => m.id === agentId);
-                  if (existing) {
-                    return prev.map((m) =>
-                      m.id === agentId ? { ...m, content: data.chunk, streaming: true } : m
-                    );
-                  }
-                  return [
-                    ...prev,
-                    {
-                      id: agentId,
-                      role: agent,
-                      content: data.chunk,
-                      timestamp: new Date().toISOString(),
-                      streaming: true,
-                    },
-                  ];
-                });
-                break;
-              }
-
-              case "stage_done":
-                setStages((s) =>
-                  s.map((st) =>
-                    st.stage === data.agent
-                      ? { ...st, status: "completed" as const, summary: data.summary }
-                      : st
-                  )
-                );
-                // Finalize agent message
-                {
-                  const agentId = agentMsgIds[data.agent];
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === agentId
-                        ? { ...m, content: agentContent[data.agent] || m.content, summary: data.summary, streaming: false }
-                        : m
-                    )
-                  );
-                }
-                break;
-
-              case "code_generated":
-                setCode(data.code);
-                break;
-
-              case "agent_error":
-                setStages((s) =>
-                  s.map((st) =>
-                    st.stage === data.agent ? { ...st, status: "failed" as const } : st
-                  )
-                );
-                break;
-
-              case "retrieve":
-                setRetrieved(data.docs || []);
-                break;
-
-              case "parallel_start":
-                setParallelTasks(data.tasks || []);
-                break;
-
-              case "parallel_update":
-                setParallelTasks((prev) =>
-                  prev.map((t) =>
-                    t.componentName === data.task.componentName
-                      ? { ...t, status: data.task.status }
-                      : t
-                  )
-                );
-                break;
-
-              case "parallel_end":
-                break;
-
-              case "pipeline_done":
-                if (data.status === "failed") {
-                  setMessages((prev) => [...prev, {
-                    id: `error-${Date.now()}`,
-                    role: "system",
-                    content: `流水线执行失败: ${data.error || "未知错误"}`,
-                    timestamp: new Date().toISOString(),
-                  }]);
-                }
-                setBusy(false);
-                break;
-            }
-          } catch { /* JSON parse error on malformed SSE line */ }
+          if (line.startsWith("event: ")) {
+            currentEvent = line.substring(7).trim();
+          } else if (line.startsWith("data: ")) {
+            const dataStr = line.substring(6);
+            if (dataStr === "[DONE]") continue;
+            try {
+              const data = JSON.parse(dataStr);
+              dispatchEvent(currentEvent, data);
+            } catch { /* JSON parse error, skip malformed data */ }
+          }
         }
       }
     } catch (e) { console.error("Chat stream failed:", e); }
