@@ -53,6 +53,7 @@ export interface PipelineContext {
   userId: string;
   userMessage: string;
   round: number;
+  previousCode?: string;
 }
 
 export interface PipelineCallbacks {

@@ -1,7 +1,7 @@
 // app/api/chat/route.ts
 import { NextRequest } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { runPipeline, loadHistory } from "@/lib/agent/pipeline";
+import { runPipeline, loadHistory, classifyIntent } from "@/lib/agent/pipeline";
 import type { PipelineCallbacks, AgentRole, ParallelTaskState, AgentDocument } from "@/lib/models/types";
 
 function sse(event: string, data: any): string {
@@ -64,9 +64,17 @@ export async function POST(req: NextRequest) {
         // Send immediate ping so frontend knows stream is alive
         enqueue("connected", { projectId, round });
         console.log("Pipeline starting:", { projectId, round, message: message.substring(0, 50) });
+        // Classify intent and get previous code for iteration
+        const roles = classifyIntent(message);
+        let previousCode: string | undefined;
+        if (project.generated_code) {
+          previousCode = project.generated_code;
+        }
+
         const result = await runPipeline(
-          { projectId, userId: user.id, userMessage: message, round },
-          cbs
+          { projectId, userId: user.id, userMessage: message, round, previousCode },
+          cbs,
+          roles
         );
         console.log("Pipeline done, code length:", result.code?.length || 0);
 

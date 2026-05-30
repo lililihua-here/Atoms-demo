@@ -9,6 +9,19 @@ import { mergeComponents, validateSyntax } from "./merge";
 import { buildToolCatalog, renderToolCatalog, resolveToolCalls } from "./mcp";
 import type { AgentRole, AgentDocument, PipelineCallbacks, PipelineContext, ParallelTaskState } from "@/lib/models/types";
 
+export function classifyIntent(userMessage: string): AgentRole[] {
+  // Bug fix / minor tweak → engineer only
+  if (/修|改|bug|错误|崩|不行|坏了|调|样式|颜色|大小|字体|边距|padding|margin|对齐|居中|改小|改大|修复|fix/i.test(userMessage)) {
+    return ["engineer"];
+  }
+  // Layout/component restructure → architect + engineer
+  if (/架构|组件|拆分|重构|布局|结构|新增.*组件|加.*组件|删.*组件|合并|分离|重新组织/i.test(userMessage)) {
+    return ["architect", "engineer"];
+  }
+  // Default → full pipeline
+  return ["pm", "architect", "engineer"];
+}
+
 const STAGE_ORDER: AgentRole[] = ["pm", "architect", "engineer"];
 const ROLE_LABELS: Record<AgentRole, string> = {
   pm: "产品经理",
@@ -96,6 +109,19 @@ function buildUserContent(
 
   if (toolResults.trim()) {
     parts.push(`## 已执行的 MCP 工具结果\n${toolResults.trim()}`);
+  }
+
+  // For iteration: inject previous code so engineer can modify instead of rewrite
+  if (ctx.round > 0 && stage === "engineer" && ctx.previousCode) {
+    parts.push(`## 当前应用的完整代码（请在此基础上修改，不要重写整个应用）
+\`\`\`jsx
+${ctx.previousCode}
+\`\`\`
+
+## 用户修改要求
+${ctx.userMessage}
+
+请只做用户要求的改动，保持其他部分完全不变。`);
   }
 
   return parts.join("\n\n");
@@ -345,7 +371,8 @@ async function persistStage(
 // Main pipeline entry point
 export async function runPipeline(
   ctx: PipelineContext,
-  cbs: PipelineCallbacks
+  cbs: PipelineCallbacks,
+  roles?: AgentRole[]
 ): Promise<{
   pmContent: string; pmSummary: string;
   architectContent: string; architectSummary: string;
@@ -374,8 +401,14 @@ export async function runPipeline(
     retrievedContext = formatRetrievedContext(retrieved);
   } catch {}
 
+  const allowedRoles = roles || STAGE_ORDER;
   const startIndex = resumeRole ? STAGE_ORDER.indexOf(resumeRole) : 0;
-  const rolesToRun = startIndex >= 0 ? STAGE_ORDER.slice(startIndex) : STAGE_ORDER;
+  // Only run roles that are both allowed and at or after the resume point
+  const rolesToRun = allowedRoles.filter(
+    (r) => STAGE_ORDER.indexOf(r) >= startIndex
+  );
+
+  console.log("runPipeline: roles =", rolesToRun.map(r => r));
 
   for (const role of rolesToRun) {
     const userContent = buildUserContent(
