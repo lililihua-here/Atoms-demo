@@ -78,11 +78,10 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMCallResult> {
   throw lastError ?? new Error("LLM call failed");
 }
 
-// Streaming call (for agent generation) — per-call timeout to avoid Vercel 60s limit
+// Streaming call (for agent generation)
 export async function* streamLLM(
   opts: LLMCallOptions
 ): AsyncGenerator<StreamEvent> {
-  const STREAM_TIMEOUT_MS = 25000; // 25s per call, 3 calls ≈ 75s worst case
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
@@ -92,8 +91,6 @@ export async function* streamLLM(
         temperature: opts.temperature ?? 0.7,
         messages: buildMessages(opts),
         stream: true,
-      }, {
-        signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
       });
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta?.content;
@@ -104,12 +101,6 @@ export async function* streamLLM(
       yield { type: "message_stop" };
       return;
     } catch (e: any) {
-      // Timeout → return what we have, don't retry
-      if (e.name === "AbortError" || e.name === "TimeoutError") {
-        console.log("streamLLM: per-call timeout reached, yielding stop");
-        yield { type: "message_stop" };
-        return;
-      }
       lastError = e;
       if (e.status !== 429 && (e.status < 500 || !e.status)) throw e;
       await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
