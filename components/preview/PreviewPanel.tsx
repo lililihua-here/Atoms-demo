@@ -1,7 +1,7 @@
 // components/preview/PreviewPanel.tsx
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Code2, Play } from "lucide-react";
