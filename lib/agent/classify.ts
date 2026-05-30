@@ -1,7 +1,7 @@
 // lib/agent/classify.ts
 // Rule-based intent classifier — no server dependencies, safe for client import
 
-export type AgentRole = "pm" | "architect" | "engineer";
+import type { AgentRole } from "@/lib/models/types";
 
 export function classifyIntent(userMessage: string): AgentRole[] {
   // Bug fix / minor tweak → engineer only
@@ -14,4 +14,14 @@ export function classifyIntent(userMessage: string): AgentRole[] {
   }
   // Default → full pipeline
   return ["pm", "architect", "engineer"];
+}
+
+export function parseDispatch(output: string): AgentRole[] | null {
+  const m = output.match(/```dispatch\s*\n?(\{[\s\S]*?\})\s*```/i);
+  if (!m) return null;
+  try {
+    const parsed = JSON.parse(m[1]);
+    if (Array.isArray(parsed.agents)) return parsed.agents;
+  } catch {}
+  return null;
 }

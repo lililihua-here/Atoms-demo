@@ -12,7 +12,7 @@ import { Brain, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { classifyIntent } from "@/lib/agent/classify";
+import { classifyIntent, parseDispatch } from "@/lib/agent/classify";
 import type { Message, StageState, ParallelTaskState, AgentRole } from "@/lib/models/types";
 
 function WorkspaceContent({ projectId }: { projectId: string }) {
@@ -20,6 +20,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [busy, setBusy] = useState(false);
   const [stages, setStages] = useState<StageState[]>([
+    { stage: "team_lead", status: "pending" },
     { stage: "pm", status: "pending" },
     { stage: "architect", status: "pending" },
     { stage: "engineer", status: "pending" },
@@ -264,30 +265,29 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
       timestamp: new Date().toISOString(),
     }]);
 
-    // Shared IDs and content accumulator across rounds
     const ts = Date.now();
     const agentMsgIds: Record<string, string> = {
       pm: `agent-${ts}-pm`,
       architect: `agent-${ts}-architect`,
       engineer: `agent-${ts}-engineer`,
+      team_lead: `agent-${ts}-lead`,
     };
     const agentContent: Record<string, string> = {};
 
-    const allRoles = classifyIntent(message);
-    const preRoles = allRoles.filter(r => r !== "engineer");
-    const hasEngineer = allRoles.includes("engineer");
+    // Step 1: Team Lead dispatch
+    const ok1 = await streamChat(["team_lead"], agentMsgIds, agentContent, message);
+    if (!ok1) return;
 
-    // Round 1: non-engineer agents (PM, Architect) — fast, <20s
-    // Round 1-N: each non-engineer agent gets its own Vercel function (60s each)
-    for (const role of preRoles) {
-      const ok = await streamChat([role], agentMsgIds, agentContent, message);
-      if (!ok) return;
+    // Step 2: Parse dispatch, run agents
+    const leadOutput = agentContent["team_lead"] || "";
+    const agents = parseDispatch(leadOutput) || classifyIntent(message);
+    for (const agent of agents) {
+      if (agent === "team_lead") continue;
+      await streamChat([agent], agentMsgIds, agentContent, message);
     }
 
-    // Final round: Engineer — gets full 60s budget
-    if (hasEngineer) {
-      await streamChat(["engineer"], agentMsgIds, agentContent, message);
-    }
+    // Step 3: Team Lead report
+    await streamChat(["team_lead"], agentMsgIds, agentContent, message);
   };
 
   const handleResume = () => {

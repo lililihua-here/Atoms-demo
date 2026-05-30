@@ -1,5 +1,5 @@
 // lib/models/types.ts
-export type AgentRole = "pm" | "architect" | "engineer";
+export type AgentRole = "pm" | "architect" | "engineer" | "team_lead";
 export type StageStatus = "pending" | "running" | "completed" | "failed";
 export type ParallelTaskStatus = "running" | "success" | "failed" | "placeholder";
 

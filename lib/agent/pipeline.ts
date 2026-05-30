@@ -1,7 +1,7 @@
 // lib/agent/pipeline.ts
 import { createServerSupabase } from "@/lib/supabase/server";
 import { streamLLM, callLLM, summarize as summarizeLLM } from "@/lib/llm/async_llm";
-import { PM_SYSTEM, ARCHITECT_SYSTEM, ENGINEER_SYSTEM, SUMMARY_SYSTEM, MCP_TOOLS_NOTE } from "./prompts";
+import { PM_SYSTEM, ARCHITECT_SYSTEM, ENGINEER_SYSTEM, SUMMARY_SYSTEM, MCP_TOOLS_NOTE, LEAD_SYSTEM, LEAD_REPORT_SYSTEM } from "./prompts";
 import { retrieve, formatRetrievedContext } from "./retrieval";
 import { embedText, serializeVector } from "./embedding";
 import { extractContract, buildSubtasks } from "./contract";
@@ -10,16 +10,18 @@ import { buildToolCatalog, renderToolCatalog, resolveToolCalls } from "./mcp";
 import type { AgentRole, AgentDocument, PipelineCallbacks, PipelineContext, ParallelTaskState } from "@/lib/models/types";
 import { classifyIntent } from "./classify";
 
-const STAGE_ORDER: AgentRole[] = ["pm", "architect", "engineer"];
-const ROLE_LABELS: Record<AgentRole, string> = {
+const STAGE_ORDER: AgentRole[] = ["pm", "architect", "engineer", "team_lead"];
+const ROLE_LABELS: Record<string, string> = {
   pm: "产品经理",
   architect: "架构师",
   engineer: "工程师",
+  team_lead: "团队领导",
 };
-const ROLE_SYSTEM: Record<AgentRole, string> = {
+const ROLE_SYSTEM: Record<string, string> = {
   pm: PM_SYSTEM,
   architect: ARCHITECT_SYSTEM,
   engineer: ENGINEER_SYSTEM,
+  team_lead: LEAD_SYSTEM,
 };
 
 const ENGINEER_CONCURRENCY = 3;
@@ -97,6 +99,19 @@ function buildUserContent(
 
   if (toolResults.trim()) {
     parts.push(`## 已执行的 MCP 工具结果\n${toolResults.trim()}`);
+  }
+
+  // Report mode: Team Lead summarizes previous agents' output
+  if (stage === "team_lead" && ctx.round > 0) {
+    const currentRoundDocs = allDocs.filter(d => d.round === ctx.round);
+    if (currentRoundDocs.length > 0) {
+      const summaries = currentRoundDocs
+        .filter(d => d.agent_role !== "team_lead")
+        .map(d => `[${ROLE_LABELS[d.agent_role as AgentRole] ?? d.agent_role}] ${d.summary}`);
+      if (summaries.length > 0) {
+        parts.push(`## 各专家本轮的输出摘要\n${summaries.join("\n\n")}\n\n请向用户汇报本轮成果。`);
+      }
+    }
   }
 
   // For iteration: inject previous code so engineer can modify instead of rewrite
@@ -442,7 +457,13 @@ export async function runPipeline(
         cbs.onError(role, "未能从工程师输出中提取到代码块");
       }
     } else {
-      const content = await streamAgent(role, ROLE_SYSTEM[role], userContent, cbs);
+      // Use report system prompt for team_lead when in report mode
+      let systemPrompt = ROLE_SYSTEM[role];
+      if (role === "team_lead" && ctx.round > 0 &&
+          userContent.includes("## 各专家本轮的输出摘要")) {
+        systemPrompt = LEAD_REPORT_SYSTEM;
+      }
+      const content = await streamAgent(role, systemPrompt, userContent, cbs);
       outputs[role] = content;
       const summary = await summarizeLLM(content, SUMMARY_SYSTEM);
       summaries[role] = summary;

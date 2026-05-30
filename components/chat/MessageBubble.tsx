@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, User, Bot, Sparkles, PenTool, Code2 } from "lucide-react";
+import { ChevronDown, ChevronUp, User, Bot, Sparkles, PenTool, Code2, Users } from "lucide-react";
 import type { AgentRole } from "@/lib/models/types";
 
 const ROLE_ICONS: Record<string, React.ReactNode> = {
@@ -12,6 +12,7 @@ const ROLE_ICONS: Record<string, React.ReactNode> = {
   pm: <Sparkles className="h-4 w-4" />,
   architect: <PenTool className="h-4 w-4" />,
   engineer: <Code2 className="h-4 w-4" />,
+  team_lead: <Users className="h-4 w-4" />,
   system: <Bot className="h-4 w-4" />,
 };
 
@@ -20,6 +21,7 @@ const ROLE_COLORS: Record<string, string> = {
   pm: "bg-amber-100 text-amber-800",
   architect: "bg-blue-100 text-blue-800",
   engineer: "bg-emerald-100 text-emerald-800",
+  team_lead: "bg-purple-100 text-purple-800",
   system: "bg-muted text-muted-foreground",
 };
 
@@ -28,6 +30,7 @@ const ROLE_LABELS: Record<string, string> = {
   pm: "产品经理",
   architect: "架构师",
   engineer: "工程师",
+  team_lead: "团队领导",
   system: "系统",
 };
 

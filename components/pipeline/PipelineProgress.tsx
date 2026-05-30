@@ -1,16 +1,18 @@
 // components/pipeline/PipelineProgress.tsx
 "use client";
 
-import { Sparkles, PenTool, Code2, Check, Loader2, X, ChevronRight } from "lucide-react";
+import { Sparkles, PenTool, Code2, Check, Loader2, X, ChevronRight, Users } from "lucide-react";
 import type { StageState, ParallelTaskState } from "@/lib/models/types";
 
 const STAGE_ICONS: Record<string, React.ReactNode> = {
+  team_lead: <Users className="h-3.5 w-3.5" />,
   pm: <Sparkles className="h-3.5 w-3.5" />,
   architect: <PenTool className="h-3.5 w-3.5" />,
   engineer: <Code2 className="h-3.5 w-3.5" />,
 };
 
 const STAGE_LABELS: Record<string, string> = {
+  team_lead: "团队领导",
   pm: "产品经理",
   architect: "架构师",
   engineer: "工程师",
