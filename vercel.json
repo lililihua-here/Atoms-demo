@@ -1,0 +1,19 @@
+{
+  "functions": {
+    "app/api/chat/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/mcp/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/chat",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" },
+        { "key": "Connection", "value": "keep-alive" }
+      ]
+    }
+  ]
+}
