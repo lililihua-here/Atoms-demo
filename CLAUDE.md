@@ -26,6 +26,12 @@
    - `git status` + `git log --oneline -3`（确认文件状态）
    - **绝对不要**凭记忆重新开始已完成的任务，相信检盘点而不是你的记忆
 
+8. **提交前必须本地 `npm run build` 通过**。Vercel 的 Node.js 版本和本地不同，编译错误不会在运行时暴露。每次提交前运行 `export PATH="$HOME/.node20:$PATH" && npx next build`，确认 Compilation 和 Type check 都通过才 push。
+
+9. **`Map.keys()` / `Set.values()` 等迭代器不能直接展开**。TypeScript 编译目标不支持 `downlevelIteration`，必须写 `Array.from(map.keys())` 而非 `...map.keys()`。已在两次部署中踩坑（`8e2e7e4` 和 `2911539`），别再犯。
+
+10. **修的每个 bug 必须同步写入 `D:\Python\Atoms笔试\调优\bug日志.md`**。不靠记忆，靠记录。
+
 ---
 
 ## 项目基本信息

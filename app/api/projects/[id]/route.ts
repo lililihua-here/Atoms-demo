@@ -25,8 +25,7 @@ export async function GET(
     .from("agent_documents")
     .select("id, agent_role, summary, tags, round, created_at")
     .eq("project_id", params.id)
-    .order("created_at", { ascending: false })
-    .limit(10);
+    .order("created_at", { ascending: true });
 
   return NextResponse.json({ ...project, documents: docs || [] });
 }
