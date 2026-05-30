@@ -139,7 +139,7 @@ function streamAgent(
     cbs.onStageStart(stage);
     try {
       // Stage-specific token limits to stay under Vercel 60s timeout
-      const stageMaxTokens: Record<string, number> = { pm: 500, architect: 1000, engineer: 2048 };
+      const stageMaxTokens: Record<string, number> = { pm: 500, architect: 1000, engineer: 4096 };
       for await (const event of streamLLM({
         system,
         messages: [{ role: "user", content: userContent }],
@@ -170,7 +170,7 @@ async function genComponent(system: string, userContent: string): Promise<string
   const result = await callLLM({
     system,
     messages: [{ role: "user", content: userContent }],
-    max_tokens: 2048,
+    max_tokens: 4096,
     temperature: 0.3,
   });
   return result.content;
