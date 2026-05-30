@@ -31,7 +31,6 @@ interface McpTool {
 }
 
 const MCP_ROLE = "mcp_server";
-const SENTINEL_PROJECT_ID = "00000000-0000-0000-0000-000000000000";
 
 export default function McpSettings() {
   const [servers, setServers] = useState<McpServerConfig[]>([]);
@@ -39,12 +38,43 @@ export default function McpSettings() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<McpServerConfig | null>(null);
   const [loading, setLoading] = useState(false);
+  const [systemProjectId, setSystemProjectId] = useState<string | null>(null);
   const supabase = createClient();
 
+  // Ensure a system project exists for MCP configs (RLS requires a real project)
+  const ensureSystemProject = useCallback(async () => {
+    if (systemProjectId) return systemProjectId;
+    // Look for existing system project
+    const { data: existing } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("name", "_mcp_config")
+      .limit(1);
+    if (existing && existing.length > 0) {
+      setSystemProjectId(existing[0].id);
+      return existing[0].id;
+    }
+    // Create one
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: created } = await supabase
+      .from("projects")
+      .insert({ name: "_mcp_config", description: "系统项目（MCP 配置存储）", user_id: user?.id })
+      .select("id")
+      .single();
+    if (created) {
+      setSystemProjectId(created.id);
+      return created.id;
+    }
+    return null;
+  }, [supabase, systemProjectId]);
+
   const loadServers = useCallback(async () => {
+    const pid = await ensureSystemProject();
+    if (!pid) { console.error("Failed to ensure system project"); return; }
     const { data } = await supabase
       .from("agent_documents")
       .select("*")
+      .eq("project_id", pid)
       .eq("agent_role", MCP_ROLE)
       .order("created_at", { ascending: false });
     if (!data) return;
@@ -63,7 +93,7 @@ export default function McpSettings() {
         };
       })
     );
-  }, [supabase]);
+  }, [supabase, ensureSystemProject]);
 
   useEffect(() => {
     if (open) loadServers();
@@ -81,8 +111,10 @@ export default function McpSettings() {
     if (cfg.id) {
       await supabase.from("agent_documents").update({ content, summary: cfg.name }).eq("id", cfg.id);
     } else {
+      const pid = systemProjectId || (await ensureSystemProject());
+      if (!pid) { console.error("No system project for MCP config"); return; }
       await supabase.from("agent_documents").insert({
-        project_id: SENTINEL_PROJECT_ID,
+        project_id: pid,
         agent_role: MCP_ROLE,
         content,
         summary: cfg.name,

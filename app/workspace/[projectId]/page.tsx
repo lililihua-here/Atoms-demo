@@ -91,6 +91,19 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
         body: JSON.stringify({ projectId, message }),
       });
 
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("Chat API error:", res.status, errText);
+        setMessages((prev) => [...prev, {
+          id: `error-${Date.now()}`,
+          role: "system",
+          content: `请求失败 (${res.status}): ${errText || "未知错误"}`,
+          timestamp: new Date().toISOString(),
+        }]);
+        setBusy(false);
+        return;
+      }
+
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -205,7 +218,18 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
                 break;
 
               case "parallel_end":
-                // Keep tasks visible
+                break;
+
+              case "pipeline_done":
+                if (data.status === "failed") {
+                  setMessages((prev) => [...prev, {
+                    id: `error-${Date.now()}`,
+                    role: "system",
+                    content: `流水线执行失败: ${data.error || "未知错误"}`,
+                    timestamp: new Date().toISOString(),
+                  }]);
+                }
+                setBusy(false);
                 break;
             }
           } catch { /* JSON parse error on malformed SSE line */ }

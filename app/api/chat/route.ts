@@ -61,10 +61,12 @@ export async function POST(req: NextRequest) {
       };
 
       try {
+        console.log("Pipeline starting:", { projectId, round, message: message.substring(0, 50) });
         const result = await runPipeline(
           { projectId, userId: user.id, userMessage: message, round },
           cbs
         );
+        console.log("Pipeline done, code length:", result.code?.length || 0);
 
         // Update project shared_json for next round
         const newShared = {
