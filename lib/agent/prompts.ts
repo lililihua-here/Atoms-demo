@@ -53,7 +53,9 @@ export const ARCHITECT_SYSTEM = `你是一名前端架构师(Architect)。基于
 - \`has_internal_state\`: 该组件是否含内部 useState/useReducer。
 - \`dependencies\`: 该组件引用的其他组件名数组(无依赖则为 [])。
 - \`shared_utilities\`: 跨组件共享工具函数(可为空数组)。
-设计要点:尽量把可独立渲染的 UI 拆成多个 leaf 组件(无 dependencies),状态尽量提升到 App,通过 props + 回调下传,以便并行生成。`;
+设计要点:尽量把可独立渲染的 UI 拆成多个 leaf 组件(无 dependencies),状态尽量提升到 App,通过 props + 回调下传,以便并行生成。
+
+⚠️ 重要:必须至少拆出 2 个以上 leaf 组件(无 dependencies)。必须先输出 Markdown 说明,再输出 \`\`\`json 代码块。JSON 必须是有效的、可被 JSON.parse 解析的格式。缺少有效 JSON 契约将导致工程师无法并行生成。`;
 
 export const ENGINEER_SYSTEM = `你是一名前端工程师(Engineer)。
 
