@@ -82,9 +82,9 @@ export async function POST(req: NextRequest) {
         const newShared = {
           ...shared,
           round,
-          pmSummary: result.pmSummary,
-          architectSummary: result.architectSummary,
-          engineerSummary: result.engineerSummary,
+          pmSummary: result.pmSummary || shared.pmSummary,
+          architectSummary: result.architectSummary || shared.architectSummary,
+          engineerSummary: result.engineerSummary || shared.engineerSummary,
         };
         await supabase
           .from("projects")
