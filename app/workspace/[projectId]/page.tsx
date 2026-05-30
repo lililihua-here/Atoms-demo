@@ -114,13 +114,14 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
   const streamChat = async (
     rolesParam: AgentRole[],
     agentMsgIds: Record<string, string>,
-    agentContent: Record<string, string>
+    agentContent: Record<string, string>,
+    userMessage: string
   ): Promise<boolean> => {
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, message: messages.find(m => m.role === "user")?.content || "", roles: rolesParam }),
+        body: JSON.stringify({ projectId, message: userMessage, roles: rolesParam }),
       });
 
       if (!res.ok) {
@@ -278,13 +279,13 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
 
     // Round 1: non-engineer agents (PM, Architect) — fast, <20s
     if (preRoles.length > 0) {
-      const ok = await streamChat(preRoles, agentMsgIds, agentContent);
+      const ok = await streamChat(preRoles, agentMsgIds, agentContent, message);
       if (!ok) return;
     }
 
     // Round 2: Engineer — gets full 60s budget
     if (hasEngineer) {
-      await streamChat(["engineer"], agentMsgIds, agentContent);
+      await streamChat(["engineer"], agentMsgIds, agentContent, message);
     }
   };
 
