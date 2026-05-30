@@ -1,5 +1,7 @@
 // lib/llm/async_llm.ts
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
+
+const DEPLOY_URL = process.env.LLM_BASE_URL || "https://api.deepseek.com/v1";
 
 function requireEnv(key: string): string {
   const value = process.env[key];
@@ -7,15 +9,18 @@ function requireEnv(key: string): string {
   return value;
 }
 
-let _anthropic: Anthropic | null = null;
-function getAnthropic(): Anthropic {
-  if (!_anthropic) {
-    _anthropic = new Anthropic({ apiKey: requireEnv("ANTHROPIC_API_KEY") });
+let _client: OpenAI | null = null;
+function getClient(): OpenAI {
+  if (!_client) {
+    _client = new OpenAI({
+      apiKey: requireEnv("DEEPSEEK_API_KEY"),
+      baseURL: DEPLOY_URL,
+    });
   }
-  return _anthropic;
+  return _client;
 }
 
-const DEFAULT_MODEL = "claude-sonnet-4-20250514";
+const DEFAULT_MODEL = process.env.LLM_MODEL || "deepseek-chat";
 const MAX_RETRIES = 3;
 
 export interface LLMCallOptions {
@@ -34,29 +39,39 @@ export type StreamEvent =
   | { type: "text_delta"; text: string }
   | { type: "message_stop" };
 
+// OpenAI-compatible messages include system as a role
+function buildMessages(opts: LLMCallOptions): OpenAI.ChatCompletionMessageParam[] {
+  const msgs: OpenAI.ChatCompletionMessageParam[] = [
+    { role: "system", content: opts.system },
+  ];
+  for (const m of opts.messages) {
+    msgs.push({ role: m.role, content: m.content });
+  }
+  return msgs;
+}
+
 // Non-streaming call (for summaries, embeddings, single-component gen)
 export async function callLLM(opts: LLMCallOptions): Promise<LLMCallResult> {
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      const res = await getAnthropic().messages.create({
+      const res = await getClient().chat.completions.create({
         model: DEFAULT_MODEL,
         max_tokens: opts.max_tokens ?? 4096,
         temperature: opts.temperature ?? 0.7,
-        system: opts.system,
-        messages: opts.messages,
+        messages: buildMessages(opts),
       });
-      const textBlock = res.content.find((b) => b.type === "text");
       return {
-        content: textBlock && "text" in textBlock ? textBlock.text : "",
+        content: res.choices[0]?.message?.content || "",
         usage: {
-          input_tokens: res.usage.input_tokens,
-          output_tokens: res.usage.output_tokens,
+          input_tokens: res.usage?.prompt_tokens || 0,
+          output_tokens: res.usage?.completion_tokens || 0,
         },
       };
     } catch (e: any) {
       lastError = e;
-      if (e.status !== 429 && e.status < 500) throw e;
+      // Only retry on rate limit (429) or server errors (5xx)
+      if (e.status !== 429 && (e.status < 500 || !e.status)) throw e;
       await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
     }
   }
@@ -70,26 +85,24 @@ export async function* streamLLM(
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      const stream = getAnthropic().messages.stream({
+      const stream = await getClient().chat.completions.create({
         model: DEFAULT_MODEL,
         max_tokens: opts.max_tokens ?? 4096,
         temperature: opts.temperature ?? 0.7,
-        system: opts.system,
-        messages: opts.messages,
+        messages: buildMessages(opts),
+        stream: true,
       });
-      for await (const event of stream) {
-        if (
-          event.type === "content_block_delta" &&
-          "text" in event.delta
-        ) {
-          yield { type: "text_delta", text: event.delta.text };
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content;
+        if (delta) {
+          yield { type: "text_delta", text: delta };
         }
       }
       yield { type: "message_stop" };
       return;
     } catch (e: any) {
       lastError = e;
-      if (e.status !== 429 && e.status < 500) throw e;
+      if (e.status !== 429 && (e.status < 500 || !e.status)) throw e;
       await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
     }
   }
