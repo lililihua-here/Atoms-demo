@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "command": "bash \"D:/Python/Atoms笔试/Atoms demo/.claude/hooks/session-start.sh\""
+      }
+    ]
+  }
+}
