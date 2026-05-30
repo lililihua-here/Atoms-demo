@@ -33,13 +33,33 @@ export interface SubTask {
   spec: ComponentSpec;
 }
 
-// Extract the first ```json block and parse into a contract
+// Extract a component contract from markdown — handles various output formats
 export function extractContract(markdown: string): ComponentContract | null {
   if (!markdown) return null;
-  const match = markdown.match(/```json\s*\n?([\s\S]*?)```/i);
-  if (!match || !match[1]) return null;
+  let jsonStr = "";
+
+  // Try ```json block first
+  const jsonBlock = markdown.match(/```json\s*\n?([\s\S]*?)```/i);
+  if (jsonBlock && jsonBlock[1]) jsonStr = jsonBlock[1].trim();
+
+  // Try any fenced block that looks like JSON
+  if (!jsonStr) {
+    const anyBlock = markdown.match(/```\s*\n?([\s\S]*?)```/);
+    if (anyBlock && anyBlock[1] && anyBlock[1].trim().startsWith("{")) {
+      jsonStr = anyBlock[1].trim();
+    }
+  }
+
+  // Try finding JSON object with "components" in raw text
+  if (!jsonStr) {
+    const match = markdown.match(/\{[\s\S]*"components"[\s\S]*\}/);
+    if (match) jsonStr = match[0];
+  }
+
+  if (!jsonStr) return null;
+
   try {
-    const raw = JSON.parse(match[1].trim());
+    const raw = JSON.parse(jsonStr);
     if (!raw || !Array.isArray(raw.components)) return null;
     const components: ComponentSpec[] = raw.components
       .filter((c: any) => c && typeof c.name === "string")

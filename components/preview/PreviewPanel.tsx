@@ -94,7 +94,7 @@ export function PreviewPanel({ code }: PreviewPanelProps) {
             title="应用预览"
           />
         </TabsContent>
-        <TabsContent value="source" className="flex-1 m-0 overflow-auto p-4 bg-[#f8f8f8]">
+        <TabsContent value="source" className="flex-1 m-0 min-h-0 overflow-auto p-4 bg-[#f8f8f8]">
           <pre className="text-xs font-mono whitespace-pre-wrap leading-relaxed">
             {code || "暂无代码"}
           </pre>

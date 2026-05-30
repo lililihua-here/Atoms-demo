@@ -413,8 +413,13 @@ export async function runPipeline(
       cbs.onStageComplete(role, content, summary);
 
       const code = extractCode(content);
-      if (code) cbs.onCode(code);
-      else cbs.onError(role, "未能从工程师输出中提取到代码块");
+      if (code) {
+        console.log("runPipeline: code extracted, length:", code.length);
+        cbs.onCode(code);
+      } else {
+        console.log("runPipeline: extractCode failed, engineer output first 300 chars:", content.substring(0, 300));
+        cbs.onError(role, "未能从工程师输出中提取到代码块");
+      }
     } else {
       const content = await streamAgent(role, ROLE_SYSTEM[role], userContent, cbs);
       outputs[role] = content;
