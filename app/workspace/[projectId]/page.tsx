@@ -154,7 +154,12 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
             break;
           }
 
-          case "stage_done": {
+          case "code_generated":
+            console.log("[Pipeline] Code received, length:", data.code?.length || 0);
+            setCode(data.code);
+            break;
+
+          case "stage_done":
             setStages((s) =>
               s.map((st) =>
                 st.stage === data.agent
@@ -162,19 +167,27 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
                   : st
               )
             );
-            const agentId = agentMsgIds[data.agent];
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === agentId
-                  ? { ...m, content: agentContent[data.agent] || m.content, summary: data.summary, streaming: false }
-                  : m
-              )
-            );
-            break;
-          }
-
-          case "code_generated":
-            setCode(data.code);
+            {
+              const agentId = agentMsgIds[data.agent];
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === agentId
+                    ? { ...m, content: agentContent[data.agent] || m.content, summary: data.summary, streaming: false }
+                    : m
+                )
+              );
+              // Fallback: if engineer finished and code not set, try extracting from output
+              if (data.agent === "engineer") {
+                const engContent = agentContent[data.agent] || "";
+                if (engContent) {
+                  const fenced = engContent.match(/```(?:jsx|js|javascript|tsx|react)?\s*\n?([\s\S]*?)```/i);
+                  if (fenced && fenced[1] && fenced[1].trim().length > 20) {
+                    console.log("[Pipeline] Extracted code from engineer output, length:", fenced[1].trim().length);
+                    setCode(fenced[1].trim());
+                  }
+                }
+              }
+            }
             break;
 
           case "agent_error":
@@ -303,19 +316,19 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
         }}
       >
         {/* Chat */}
-        <div className="flex flex-col border-r border-border/20 min-w-0">
+        <div className="flex flex-col border-r border-border/20 min-w-0 h-full overflow-hidden">
           <ChatPanel messages={messages} busy={busy} onSend={handleSend} />
         </div>
 
         {/* Memory sidebar */}
         {memoryOpen && (
-          <div className="border-r border-border/20 min-w-0 hidden md:block">
+          <div className="border-r border-border/20 min-w-0 h-full overflow-hidden hidden md:block">
             <MemoryPanel docs={retrieved} />
           </div>
         )}
 
         {/* Preview */}
-        <div className="min-w-0 hidden md:block">
+        <div className="min-w-0 h-full overflow-hidden hidden md:block">
           <PreviewPanel code={code} />
         </div>
         {memoryOpen && (
