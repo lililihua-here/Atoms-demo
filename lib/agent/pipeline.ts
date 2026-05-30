@@ -103,7 +103,7 @@ function buildUserContent(
 
   // Report mode: Team Lead summarizes previous agents' output
   if (stage === "team_lead" && ctx.round > 0) {
-    const currentRoundDocs = allDocs.filter(d => d.round === ctx.round);
+    const currentRoundDocs = allDocs.filter(d => d.round === ctx.round - 1 && d.agent_role !== "team_lead");
     if (currentRoundDocs.length > 0) {
       const summaries = currentRoundDocs
         .filter(d => d.agent_role !== "team_lead")
