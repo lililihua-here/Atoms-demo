@@ -286,7 +286,8 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
       await streamChat([agent], agentMsgIds, agentContent, message);
     }
 
-    // Step 3: Team Lead report
+    // Step 3: Team Lead report — new ID so it's a separate bubble
+    agentMsgIds["team_lead"] = `agent-${ts}-lead-report`;
     await streamChat(["team_lead"], agentMsgIds, agentContent, message);
   };
 
