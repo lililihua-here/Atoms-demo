@@ -81,7 +81,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
           byRound.set(doc.round, list);
         }
         if (byRound.size > 0) {
-          const maxRound = Math.max(...byRound.keys());
+          const maxRound = Math.max(...Array.from(byRound.keys()));
           const roundDocs = byRound.get(maxRound) || [];
           const rolesInRound = new Set(roundDocs.map((d) => d.agent_role));
           const hasPm = rolesInRound.has("pm");
