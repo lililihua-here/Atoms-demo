@@ -278,12 +278,13 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
     const hasEngineer = allRoles.includes("engineer");
 
     // Round 1: non-engineer agents (PM, Architect) — fast, <20s
-    if (preRoles.length > 0) {
-      const ok = await streamChat(preRoles, agentMsgIds, agentContent, message);
+    // Round 1-N: each non-engineer agent gets its own Vercel function (60s each)
+    for (const role of preRoles) {
+      const ok = await streamChat([role], agentMsgIds, agentContent, message);
       if (!ok) return;
     }
 
-    // Round 2: Engineer — gets full 60s budget
+    // Final round: Engineer — gets full 60s budget
     if (hasEngineer) {
       await streamChat(["engineer"], agentMsgIds, agentContent, message);
     }
