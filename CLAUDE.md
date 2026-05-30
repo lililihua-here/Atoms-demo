@@ -20,6 +20,12 @@
 
 6. **复用优先**。先检查参考项目（`D:\Python\Atoms参考\参考项目\V9 - 项目计划和MVP(1)\`）是否有可抄的代码，再看学习文档（`D:\Python\Atoms笔试\学习文档-参考项目分析.md`）的抄袭路径。
 
+7. **上下文压缩后必须恢复**。当你看到 `<system-reminder>` 说上下文被压缩了，PostCompact hook 会注入检盘点。你必须立刻：
+   - Read `D:\Python\Atoms笔试\Atoms demo\.claude\checkpoint.md`（PreCompact 保存的状态快照）
+   - Read `D:\Python\Atoms笔试\Atoms demo\PROGRESS.md`（确认当前 Task）
+   - `git status` + `git log --oneline -3`（确认文件状态）
+   - **绝对不要**凭记忆重新开始已完成的任务，相信检盘点而不是你的记忆
+
 ---
 
 ## 项目基本信息

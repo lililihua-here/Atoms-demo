@@ -5,6 +5,18 @@
         "matcher": "*",
         "command": "bash \"D:/Python/Atoms笔试/Atoms demo/.claude/hooks/session-start.sh\""
       }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "command": "bash \"D:/Python/Atoms笔试/Atoms demo/.claude/hooks/pre-compact.sh\""
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "*",
+        "command": "bash \"D:/Python/Atoms笔试/Atoms demo/.claude/hooks/post-compact.sh\""
+      }
     ]
   }
 }
