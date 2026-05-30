@@ -61,6 +61,8 @@ export async function POST(req: NextRequest) {
       };
 
       try {
+        // Send immediate ping so frontend knows stream is alive
+        enqueue("connected", { projectId, round });
         console.log("Pipeline starting:", { projectId, round, message: message.substring(0, 50) });
         const result = await runPipeline(
           { projectId, userId: user.id, userMessage: message, round },

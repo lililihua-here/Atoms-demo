@@ -115,6 +115,10 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
       // Process a single SSE event by dispatching to the switch handler
       const dispatchEvent = (eventType: string, data: any) => {
         switch (eventType || data.event) {
+          case "connected":
+            console.log("[Pipeline] Stream connected, round:", data.round);
+            break;
+
           case "stage_start":
             setStages((s) =>
               s.map((st) =>
@@ -237,10 +241,12 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
           } else if (line.startsWith("data: ")) {
             const dataStr = line.substring(6);
             if (dataStr === "[DONE]") continue;
+            console.log("[SSE]", currentEvent || "(no-event)", dataStr.substring(0, 80));
             try {
               const data = JSON.parse(dataStr);
               dispatchEvent(currentEvent, data);
-            } catch { /* JSON parse error, skip malformed data */ }
+            } catch { console.warn("[SSE] JSON parse failed:", dataStr.substring(0, 80)); }
+            currentEvent = "";
           }
         }
       }
