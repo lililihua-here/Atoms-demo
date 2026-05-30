@@ -102,15 +102,19 @@ function buildUserContent(
   }
 
   // Report mode: Team Lead summarizes previous agents' output
+  // Uses latest doc per agent_role (robust to round fragmentation across API calls)
   if (stage === "team_lead" && ctx.round > 0) {
-    const currentRoundDocs = allDocs.filter(d => d.round === ctx.round - 1 && d.agent_role !== "team_lead");
-    if (currentRoundDocs.length > 0) {
-      const summaries = currentRoundDocs
-        .filter(d => d.agent_role !== "team_lead")
-        .map(d => `[${ROLE_LABELS[d.agent_role as AgentRole] ?? d.agent_role}] ${d.summary}`);
-      if (summaries.length > 0) {
-        parts.push(`## 各专家本轮的输出摘要\n${summaries.join("\n\n")}\n\n请向用户汇报本轮成果。`);
-      }
+    const nonLeadDocs = allDocs
+      .filter(d => d.agent_role !== "team_lead")
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const seen = new Set<string>();
+    const latest: AgentDocument[] = [];
+    for (const d of nonLeadDocs) {
+      if (!seen.has(d.agent_role)) { seen.add(d.agent_role); latest.push(d); }
+    }
+    if (latest.length > 0) {
+      const summaries = latest.map(d => `[${ROLE_LABELS[d.agent_role as AgentRole] ?? d.agent_role}] ${d.summary}`);
+      parts.push(`## 各专家本轮的输出摘要\n${summaries.join("\n\n")}\n\n请向用户汇报本轮成果。`);
     }
   }
 
