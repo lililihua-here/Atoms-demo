@@ -30,27 +30,41 @@ const EMPTY_HTML = `<!DOCTYPE html>
 
 function buildSrcDoc(code: string): string {
   return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"><\/script>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"><\/script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><\/script>
-  <script src="https://cdn.tailwindcss.com"><\/script>
-  <script>
-    tailwind.config = { corePlugins: { preflight: true } };
-  <\/script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, sans-serif; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script src="https://unpkg.com/react@18/umd/react.development.js"><\/script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"><\/script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
+<script src="https://cdn.tailwindcss.com"><\/script>
+<style>
+  body { margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; }
+  #error-box { display: none; padding: 16px; margin: 16px; border: 2px solid #b91c1c;
+    background: #fef2f2; color: #7f1d1d; font-family: ui-monospace, monospace;
+    white-space: pre-wrap; font-size: 13px; border-radius: 4px; }
+</style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
-    ${code}
-  <\/script>
+<div id="error-box"></div>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
+function __showError(msg) {
+  var box = document.getElementById('error-box');
+  box.style.display = 'block';
+  box.textContent = '\\u8fd0\\u884c\\u51fa\\u9519:\\n' + msg;
+}
+window.addEventListener('error', function(e) { __showError(e.message || String(e.error)); });
+try {
+${code}
+
+var __root = ReactDOM.createRoot(document.getElementById('root'));
+__root.render(React.createElement(App));
+} catch (err) {
+  __showError(err && err.message ? err.message : String(err));
+}
+<\/script>
 </body>
 </html>`;
 }

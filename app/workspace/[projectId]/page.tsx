@@ -29,6 +29,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [resume, setResume] = useState<{ requirement: string; round: number; nextRole: string } | null>(null);
 
   // Load project info + history on mount
   useEffect(() => {
@@ -44,19 +45,65 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
         setProjectName(data.name || "");
         setCode(data.generated_code || "");
 
-        // Rebuild messages from documents
-        const docs = data.documents || [];
+        // Rebuild messages from documents, ordered by created_at
+        const docs: any[] = (data.documents || []).sort(
+          (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
         const msgs: Message[] = [];
+        const roleOrder = ["pm", "architect", "engineer"];
+
         for (const doc of docs) {
+          // Insert user message before the first PM doc of each round
+          if (doc.agent_role === "pm" && doc.tags && doc.tags.length > 0) {
+            msgs.push({
+              id: `u-${doc.round}`,
+              role: "user",
+              content: Array.isArray(doc.tags) ? doc.tags[0] : String(doc.tags),
+              timestamp: doc.created_at,
+            });
+          }
           msgs.push({
-            id: String(doc.id),
+            id: `${doc.agent_role}-${doc.round}`,
             role: doc.agent_role as any,
             content: doc.content || "",
             summary: doc.summary,
             timestamp: doc.created_at,
           });
         }
+
         if (msgs.length > 0) setMessages(msgs);
+
+        // Detect breakpoint resume: PM done but missing later roles in latest round
+        const byRound = new Map<number, any[]>();
+        for (const doc of docs) {
+          const list = byRound.get(doc.round) || [];
+          list.push(doc);
+          byRound.set(doc.round, list);
+        }
+        if (byRound.size > 0) {
+          const maxRound = Math.max(...byRound.keys());
+          const roundDocs = byRound.get(maxRound) || [];
+          const rolesInRound = new Set(roundDocs.map((d) => d.agent_role));
+          const hasPm = rolesInRound.has("pm");
+          const missingLater = !rolesInRound.has("architect") || !rolesInRound.has("engineer");
+          if (hasPm && missingLater) {
+            const pmDoc = roundDocs.find((d) => d.agent_role === "pm");
+            const nextRole = roleOrder.find((r) => !rolesInRound.has(r));
+            setResume({
+              requirement: (pmDoc?.tags && pmDoc.tags[0]) || "继续生成",
+              round: maxRound,
+              nextRole: nextRole || "architect",
+            });
+            // Mark completed stages
+            setStages((s) =>
+              s.map((st) =>
+                rolesInRound.has(st.stage)
+                  ? { ...st, status: "completed" as const }
+                  : st
+              )
+            );
+          }
+        }
       } catch (e) { console.error("Load project failed:", e); }
       setLoading(false);
     })();
@@ -283,6 +330,13 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
     setBusy(false);
   };
 
+  const handleResume = () => {
+    if (!resume || busy) return;
+    const req = resume.requirement;
+    setResume(null);
+    handleSend(req);
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
@@ -321,6 +375,20 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
 
       {/* Pipeline Progress */}
       <PipelineProgress stages={stages} parallelTasks={parallelTasks} />
+
+      {/* Resume banner */}
+      {resume && !busy && (
+        <div className="border-b-2 border-border bg-muted shrink-0">
+          <div className="px-4 py-2 flex items-center justify-between gap-4">
+            <span className="text-sm truncate">
+              上次生成中断，可从「{resume.nextRole === "architect" ? "架构师" : "工程师"}」阶段继续
+            </span>
+            <Button size="sm" onClick={() => handleResume()}>
+              继续生成
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Main content area — responsive grid */}
       <div className="flex-1 grid min-h-0"
