@@ -15,7 +15,7 @@ import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Plus, Edit3, Trash2, LogOut, Code2, Clock } from "lucide-react";
+import { Loader2, Plus, Edit3, Trash2, LogOut, FolderOpen, Clock } from "lucide-react";
 
 interface Project {
   id: string;
@@ -152,7 +152,7 @@ export default function ProjectsPage() {
         {projects.length === 0 ? (
           <div className="text-center py-20">
             <div className="h-24 w-24 mx-auto mb-6 rounded-full flex items-center justify-center bg-muted/50">
-              <Code2 className="h-10 w-10 text-muted-foreground/40" />
+              <FolderOpen className="h-10 w-10 text-muted-foreground/40" />
             </div>
             <p className="text-xl font-bold text-foreground mb-1">还没有项目</p>
             <p className="text-muted-foreground text-sm mb-6">
