@@ -27,17 +27,17 @@ export function ChatInput({ onSend, disabled, busy, onStop }: ChatInputProps) {
 
   return (
     <div className="border-t border-border/20 p-3 flex gap-2 items-end bg-background/50">
-      {busy && onStop && (
-        <Button
-          variant="destructive"
-          size="icon"
-          onClick={onStop}
-          className="shrink-0"
-          data-no-shadow
-        >
-          <Square className="h-4 w-4" />
-        </Button>
-      )}
+      <Button
+        variant={busy ? "destructive" : "ghost"}
+        size="icon"
+        onClick={busy ? onStop : undefined}
+        disabled={!busy}
+        className="shrink-0"
+        data-no-shadow
+        title={busy ? "停止生成" : "等待中"}
+      >
+        <Square className="h-4 w-4" />
+      </Button>
       <Textarea
         ref={ref}
         value={value}

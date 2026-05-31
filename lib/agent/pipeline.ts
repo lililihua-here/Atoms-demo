@@ -167,6 +167,7 @@ export async function runPipeline(
       outputs[role] = content;
       const summary = await summarizeLLM(content, SUMMARY_SYSTEM);
       summaries[role] = summary;
+      console.log("persistStage metrics for", role, ":", engMetrics || "undefined");
       const doc = await persistStage(role, content, summary, ctx, engMetrics);
       cbs.onStagePersist(role, doc);
       cbs.onStageComplete(role, content, summary);
@@ -205,6 +206,7 @@ export async function runPipeline(
         }
       } catch {}
 
+      console.log("persistStage metrics for", role, ":", { duration_ms, input_tokens, output_tokens });
       const doc = await persistStage(role, content, summary, ctx,
         { duration_ms, input_tokens, output_tokens });
       cbs.onStagePersist(role, doc);

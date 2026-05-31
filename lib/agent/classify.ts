@@ -16,12 +16,14 @@ export function classifyIntent(userMessage: string): AgentRole[] {
   return ["pm", "architect", "engineer"];
 }
 
-export function parseDispatch(output: string): AgentRole[] | null {
+export function parseDispatch(output: string): { agents: AgentRole[]; note?: string } | null {
   const m = output.match(/```dispatch\s*\n?(\{[\s\S]*?\})\s*```/i);
   if (!m) return null;
   try {
     const parsed = JSON.parse(m[1]);
-    if (Array.isArray(parsed.agents)) return parsed.agents;
+    if (Array.isArray(parsed.agents)) {
+      return { agents: parsed.agents, note: parsed.note };
+    }
   } catch {}
   return null;
 }

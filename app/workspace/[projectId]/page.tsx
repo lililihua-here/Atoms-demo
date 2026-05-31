@@ -33,6 +33,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
   const [loading, setLoading] = useState(true);
   const [resume, setResume] = useState<{ requirement: string; round: number; nextRole: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const currentStepRef = useRef(0); // 1=team_lead, 2=agents, 3=report
 
   // Load project info + history on mount
   useEffect(() => {
@@ -265,12 +266,15 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
 
   const handleStop = () => {
     abortRef.current?.abort();
-    abortRef.current = null;  // reset so next send creates a fresh controller
     setBusy(false);
+    const wasFirstStep = currentStepRef.current === 1;
+    currentStepRef.current = 0;
     setMessages((prev) => [...prev, {
       id: `stop-${Date.now()}`,
       role: "system",
-      content: "已停止生成。",
+      content: wasFirstStep
+        ? "已中断，请重新发送消息。"
+        : "已中断，当前进度已保存。刷新页面后可从断点续跑继续。",
       timestamp: new Date().toISOString(),
     }]);
   };
@@ -300,20 +304,27 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
     const agentContent: Record<string, string> = {};
 
     // Step 1: Team Lead dispatch
+    currentStepRef.current = 1;
     const ok1 = await streamChat(["team_lead"], agentMsgIds, agentContent, message);
     if (!ok1) return;
 
     // Step 2: Parse dispatch, run agents
+    currentStepRef.current = 2;
     const leadOutput = agentContent["team_lead"] || "";
-    const agents = parseDispatch(leadOutput) || classifyIntent(message);
+    const dispatch = parseDispatch(leadOutput);
+    const agents = dispatch?.agents || classifyIntent(message);
+    // Pass dispatch note as part of message for engineer context
+    const effectiveMsg = dispatch?.note ? `${message}\n\n[团队领导指示: ${dispatch.note}]` : message;
     for (const agent of agents) {
       if (agent === "team_lead") continue;
-      await streamChat([agent], agentMsgIds, agentContent, message);
+      await streamChat([agent], agentMsgIds, agentContent, effectiveMsg);
     }
 
     // Step 3: Team Lead report — new ID so it's a separate bubble
+    currentStepRef.current = 3;
     agentMsgIds["team_lead"] = `agent-${ts}-lead-report`;
     await streamChat(["team_lead"], agentMsgIds, agentContent, message);
+    currentStepRef.current = 0;
   };
 
   const handleResume = () => {
