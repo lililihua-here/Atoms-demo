@@ -2,7 +2,7 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { summarize as summarizeLLM } from "@/lib/llm/async_llm";
 import { SUMMARY_SYSTEM, LEAD_REPORT_SYSTEM } from "./prompts";
-import { retrieve, formatRetrievedContext } from "./retrieval";
+import { retrieve, formatRetrievedContext, retrieveCrossProject } from "./retrieval";
 import { embedText, serializeVector } from "./embedding";
 import { buildToolCatalog, renderToolCatalog, resolveToolCalls } from "./mcp";
 import type { AgentRole, AgentDocument, PipelineCallbacks, PipelineContext } from "@/lib/models/types";
@@ -109,8 +109,16 @@ export async function runPipeline(
   let retrievedContext = "";
   try {
     const retrieved = await retrieve(ctx.userMessage, ctx.projectId);
-    cbs.onRetrieve(retrieved);
-    retrievedContext = formatRetrievedContext(retrieved);
+    const crossRetrieved = await retrieveCrossProject(
+      ctx.userMessage, ctx.userId, ctx.projectId, 2
+    );
+    // Merge: current project first, then cross-project
+    const allRetrieved = [
+      ...retrieved.map(r => ({ ...r, source: "current" as const })),
+      ...crossRetrieved,
+    ];
+    cbs.onRetrieve(allRetrieved);
+    retrievedContext = formatRetrievedContext(allRetrieved);
   } catch {}
 
   const allowedRoles = roles || STAGE_ORDER;
