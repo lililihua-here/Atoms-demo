@@ -432,7 +432,8 @@ export async function runPipeline(
           summaries.architect || "",
           ctx, docs, cbs
         );
-      } catch {
+      } catch (e) {
+        console.warn("runEngineerParallel threw, falling back to serial:", e);
         cbs.onParallelEnd();
       }
 

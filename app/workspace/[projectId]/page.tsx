@@ -1,7 +1,7 @@
 // app/workspace/[projectId]/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { PipelineProgress } from "@/components/pipeline/PipelineProgress";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { PreviewPanel } from "@/components/preview/PreviewPanel";
@@ -32,6 +32,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
   const [projectName, setProjectName] = useState("");
   const [loading, setLoading] = useState(true);
   const [resume, setResume] = useState<{ requirement: string; round: number; nextRole: string } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Load project info + history on mount
   useEffect(() => {
@@ -123,6 +124,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, message: userMessage, roles: rolesParam }),
+        signal: abortRef.current?.signal,
       });
 
       if (!res.ok) {
@@ -248,11 +250,33 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
         }
       }
       return true;
-    } catch (e) { console.error("Chat stream failed:", e); setBusy(false); return false; }
+    } catch (e: any) {
+  console.error("Chat stream failed:", e);
+  setMessages((prev) => [...prev, {
+    id: `error-${Date.now()}`,
+    role: "system",
+    content: `连接中断: ${e?.message || "未知错误"}。请刷新页面重试。`,
+    timestamp: new Date().toISOString(),
+  }]);
+  setBusy(false);
+  return false;
+}
+  };
+
+  const handleStop = () => {
+    abortRef.current?.abort();
+    setBusy(false);
+    setMessages((prev) => [...prev, {
+      id: `stop-${Date.now()}`,
+      role: "system",
+      content: "已停止生成。",
+      timestamp: new Date().toISOString(),
+    }]);
   };
 
   const handleSend = async (message: string) => {
     if (busy) return;
+    abortRef.current = new AbortController();
     setBusy(true);
     setParallelTasks([]);
     setRetrieved([]);
@@ -361,7 +385,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
       >
         {/* Chat */}
         <div className="flex flex-col border-r border-border/20 min-w-0 h-full overflow-hidden">
-          <ChatPanel messages={messages} busy={busy} onSend={handleSend} />
+          <ChatPanel messages={messages} busy={busy} onSend={handleSend} onStop={handleStop} />
         </div>
 
         {/* Memory sidebar */}
