@@ -34,6 +34,9 @@ export interface AgentDocument {
   tags: string[];
   round: number;
   embedding_json: string | null;
+  duration_ms?: number;
+  input_tokens?: number;
+  output_tokens?: number;
   created_at: string;
 }
 

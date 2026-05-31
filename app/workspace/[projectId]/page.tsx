@@ -255,7 +255,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
   setMessages((prev) => [...prev, {
     id: `error-${Date.now()}`,
     role: "system",
-    content: `连接中断: ${e?.message || "未知错误"}。请刷新页面重试。`,
+    content: `连接中断: ${e?.message || "未知错误"}。可重新发送消息。`,
     timestamp: new Date().toISOString(),
   }]);
   setBusy(false);
@@ -265,6 +265,7 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
 
   const handleStop = () => {
     abortRef.current?.abort();
+    abortRef.current = null;  // reset so next send creates a fresh controller
     setBusy(false);
     setMessages((prev) => [...prev, {
       id: `stop-${Date.now()}`,

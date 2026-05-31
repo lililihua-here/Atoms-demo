@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Plus, Edit3, Trash2, LogOut, FolderOpen, Clock } from "lucide-react";
+import { Loader2, Plus, Edit3, Trash2, LogOut, FolderOpen, Clock, BarChart3 } from "lucide-react";
 
 interface Project {
   id: string;
@@ -132,9 +133,16 @@ export default function ProjectsPage() {
           </div>
           <h1 className="text-lg font-bold">Atoms Studio</h1>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
-          <LogOut className="h-4 w-4 mr-1.5" /> 退出
-        </Button>
+        <div className="flex items-center gap-1">
+          <Link href="/stats">
+            <Button variant="ghost" size="sm" className="text-muted-foreground">
+              <BarChart3 className="h-4 w-4 mr-1.5" /> 统计
+            </Button>
+          </Link>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
+            <LogOut className="h-4 w-4 mr-1.5" /> 退出
+          </Button>
+        </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-10">

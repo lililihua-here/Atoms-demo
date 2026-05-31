@@ -57,7 +57,8 @@ async function persistStage(
   stage: AgentRole,
   output: string,
   summary: string,
-  ctx: PipelineContext
+  ctx: PipelineContext,
+  metrics?: { duration_ms: number; input_tokens: number; output_tokens: number }
 ): Promise<AgentDocument> {
   const supabase = createServerSupabase();
   const embedding = await embedText(summary);
@@ -73,6 +74,7 @@ async function persistStage(
       tags,
       round: ctx.round,
       embedding_json: embedding ? serializeVector(embedding) : null,
+      ...(metrics || {}),
     })
     .select()
     .single();
@@ -151,18 +153,21 @@ export async function runPipeline(
       }
 
       let content: string;
+      let engMetrics: { duration_ms: number; input_tokens: number; output_tokens: number } | undefined;
       if (mergedCode) {
         content = `> 已通过组件级并行生成并合并代码。\n\n\`\`\`jsx\n${mergedCode}\n\`\`\``;
         cbs.onChunk(role, content);
       } else {
         // Fallback to serial full-app Engineer
-        content = await streamAgent(role, ROLE_SYSTEM[role], userContent, cbs);
+        const result = await streamAgent(role, ROLE_SYSTEM[role], userContent, cbs);
+        content = result.content;
+        engMetrics = { duration_ms: result.duration_ms, input_tokens: result.input_tokens, output_tokens: result.output_tokens };
       }
 
       outputs[role] = content;
       const summary = await summarizeLLM(content, SUMMARY_SYSTEM);
       summaries[role] = summary;
-      const doc = await persistStage(role, content, summary, ctx);
+      const doc = await persistStage(role, content, summary, ctx, engMetrics);
       cbs.onStagePersist(role, doc);
       cbs.onStageComplete(role, content, summary);
 
@@ -184,7 +189,8 @@ export async function runPipeline(
           userContent.includes("## 各专家本轮的输出摘要")) {
         systemPrompt = LEAD_REPORT_SYSTEM;
       }
-      const content = await streamAgent(role, systemPrompt, userContent, cbs);
+      const { content, duration_ms, input_tokens, output_tokens } =
+        await streamAgent(role, systemPrompt, userContent, cbs);
       outputs[role] = content;
       const summary = await summarizeLLM(content, SUMMARY_SYSTEM);
       summaries[role] = summary;
@@ -199,7 +205,8 @@ export async function runPipeline(
         }
       } catch {}
 
-      const doc = await persistStage(role, content, summary, ctx);
+      const doc = await persistStage(role, content, summary, ctx,
+        { duration_ms, input_tokens, output_tokens });
       cbs.onStagePersist(role, doc);
       cbs.onStageComplete(role, content, summary);
     }

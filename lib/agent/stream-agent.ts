@@ -9,9 +9,12 @@ export function streamAgent(
   system: string,
   userContent: string,
   cbs: PipelineCallbacks
-): Promise<string> {
+): Promise<{ content: string; duration_ms: number; input_tokens: number; output_tokens: number }> {
   return new Promise(async (resolve, reject) => {
+    const startTime = Date.now();
     let acc = "";
+    let inputTokens = 0;
+    let outputTokens = 0;
     cbs.onStageStart(stage);
     try {
       // Stage-specific token limits to stay under Vercel 60s timeout
@@ -26,6 +29,10 @@ export function streamAgent(
           acc += event.text;
           cbs.onChunk(stage, acc);
         }
+        if (event.type === "usage") {
+          inputTokens = event.input_tokens;
+          outputTokens = event.output_tokens;
+        }
         if (event.type === "message_stop") break;
       }
       // Resolve MCP tool calls
@@ -33,7 +40,8 @@ export function streamAgent(
         const resolved = await resolveToolCalls(acc);
         if (resolved) acc += resolved;
       } catch {}
-      resolve(acc);
+      const duration_ms = Date.now() - startTime;
+      resolve({ content: acc, duration_ms, input_tokens: inputTokens, output_tokens: outputTokens });
     } catch (e: any) {
       cbs.onError(stage, e.message || "Agent generation failed");
       reject(e);

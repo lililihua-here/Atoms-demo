@@ -37,7 +37,8 @@ export interface LLMCallResult {
 
 export type StreamEvent =
   | { type: "text_delta"; text: string }
-  | { type: "message_stop" };
+  | { type: "message_stop" }
+  | { type: "usage"; input_tokens: number; output_tokens: number };
 
 // OpenAI-compatible messages include system as a role
 function buildMessages(opts: LLMCallOptions): OpenAI.ChatCompletionMessageParam[] {
@@ -91,11 +92,19 @@ export async function* streamLLM(
         temperature: opts.temperature ?? 0.7,
         messages: buildMessages(opts),
         stream: true,
+        stream_options: { include_usage: true },
       });
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta?.content;
         if (delta) {
           yield { type: "text_delta", text: delta };
+        }
+        if (chunk.usage) {
+          yield {
+            type: "usage",
+            input_tokens: chunk.usage.prompt_tokens || 0,
+            output_tokens: chunk.usage.completion_tokens || 0,
+          };
         }
       }
       yield { type: "message_stop" };

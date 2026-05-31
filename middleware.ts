@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
   );
 
   const pathname = request.nextUrl.pathname;
-  if (pathname.startsWith("/workspace")) {
+  if (pathname.startsWith("/workspace") || pathname.startsWith("/stats")) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.redirect(new URL("/login", request.url));
