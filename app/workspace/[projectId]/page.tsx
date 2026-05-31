@@ -316,7 +316,9 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
     const dispatch = parseDispatch(leadOutput);
     console.log("[Dispatch] parsed:", dispatch);
     const agents = dispatch?.agents || classifyIntent(message);
-    const effectiveMsg = dispatch?.note ? `${message}\n\n[团队领导指示: ${dispatch.note}]` : message;
+    // Fallback: if no dispatch JSON, use Team Lead's raw text as engineer hint
+    const leadNote = dispatch?.note || (!dispatch ? leadOutput : "");
+    const effectiveMsg = leadNote ? `${message}\n\n[团队领导指示: ${leadNote}]` : message;
     for (const agent of agents) {
       if (agent === "team_lead") continue;
       const ok = await streamChat([agent], agentMsgIds, agentContent, effectiveMsg);
