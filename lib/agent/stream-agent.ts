@@ -8,8 +8,7 @@ export function streamAgent(
   stage: AgentRole,
   system: string,
   userContent: string,
-  cbs: PipelineCallbacks,
-  maxTokens?: number
+  cbs: PipelineCallbacks
 ): Promise<{ content: string; duration_ms: number; input_tokens: number; output_tokens: number }> {
   return new Promise(async (resolve, reject) => {
     const startTime = Date.now();
@@ -18,13 +17,12 @@ export function streamAgent(
     let outputTokens = 0;
     cbs.onStageStart(stage);
     try {
-      // Stage-specific token limits; override via maxTokens param
+      // Stage-specific token limits to stay under Vercel 60s timeout
       const stageMaxTokens: Record<string, number> = { pm: 500, architect: 3000, engineer: 4096 };
-      const effectiveMaxTokens = maxTokens ?? stageMaxTokens[stage] ?? 2048;
       for await (const event of streamLLM({
         system,
         messages: [{ role: "user", content: userContent }],
-        max_tokens: effectiveMaxTokens,
+        max_tokens: stageMaxTokens[stage] ?? 2048,
         temperature: 0.3,
       })) {
         if (event.type === "text_delta") {

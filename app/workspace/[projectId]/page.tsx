@@ -33,7 +33,6 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
   const [loading, setLoading] = useState(true);
   const [resume, setResume] = useState<{ requirement: string; round: number; nextRole: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const stoppedRef = useRef(false);
 
   // Load project info + history on mount
   useEffect(() => {
@@ -265,8 +264,8 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
   };
 
   const handleStop = () => {
-    stoppedRef.current = true;
     abortRef.current?.abort();
+    abortRef.current = null;  // reset so next send creates a fresh controller
     setBusy(false);
     setMessages((prev) => [...prev, {
       id: `stop-${Date.now()}`,
@@ -279,7 +278,6 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
   const handleSend = async (message: string) => {
     if (busy) return;
     abortRef.current = new AbortController();
-    stoppedRef.current = false;
     setBusy(true);
     setParallelTasks([]);
     setRetrieved([]);
@@ -310,16 +308,12 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
     const agents = parseDispatch(leadOutput) || classifyIntent(message);
     for (const agent of agents) {
       if (agent === "team_lead") continue;
-      if (stoppedRef.current) break;
-      const ok = await streamChat([agent], agentMsgIds, agentContent, message);
-      if (!ok) break;
+      await streamChat([agent], agentMsgIds, agentContent, message);
     }
 
-    // Step 3: Team Lead report — skipped if stopped
-    if (!stoppedRef.current) {
-      agentMsgIds["team_lead"] = `agent-${ts}-lead-report`;
-      await streamChat(["team_lead"], agentMsgIds, agentContent, message);
-    }
+    // Step 3: Team Lead report — new ID so it's a separate bubble
+    agentMsgIds["team_lead"] = `agent-${ts}-lead-report`;
+    await streamChat(["team_lead"], agentMsgIds, agentContent, message);
   };
 
   const handleResume = () => {

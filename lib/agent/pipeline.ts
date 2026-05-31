@@ -140,7 +140,6 @@ export async function runPipeline(
 
     if (role === "engineer") {
       // Try parallel component-level generation first
-      const engStart = Date.now();
       let mergedCode: string | null = null;
       try {
         mergedCode = await runEngineerParallel(
@@ -158,12 +157,9 @@ export async function runPipeline(
       if (mergedCode) {
         content = `> 已通过组件级并行生成并合并代码。\n\n\`\`\`jsx\n${mergedCode}\n\`\`\``;
         cbs.onChunk(role, content);
-        engMetrics = { duration_ms: Date.now() - engStart, input_tokens: 0, output_tokens: 0 };
       } else {
-        // Fallback to serial full-app Engineer (use lower tokens in modification mode)
-        const modifyMode = ctx.round > 0 && !!ctx.previousCode;
-        const result = await streamAgent(role, ROLE_SYSTEM[role], userContent, cbs,
-          modifyMode ? 2048 : undefined);
+        // Fallback to serial full-app Engineer
+        const result = await streamAgent(role, ROLE_SYSTEM[role], userContent, cbs);
         content = result.content;
         engMetrics = { duration_ms: result.duration_ms, input_tokens: result.input_tokens, output_tokens: result.output_tokens };
       }
