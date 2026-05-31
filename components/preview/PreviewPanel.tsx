@@ -71,7 +71,7 @@ __root.render(React.createElement(App));
 </html>`;
 }
 
-export function PreviewPanel({ code }: PreviewPanelProps) {
+export function PreviewPanel({ code, projectName }: PreviewPanelProps) {
   const [key, setKey] = useState(0);
 
   useEffect(() => {
