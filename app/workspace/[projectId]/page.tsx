@@ -268,7 +268,6 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
     abortRef.current?.abort();
     setBusy(false);
     const wasFirstStep = currentStepRef.current === 1;
-    currentStepRef.current = 0;
     setMessages((prev) => [...prev, {
       id: `stop-${Date.now()}`,
       role: "system",
@@ -312,12 +311,13 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
     currentStepRef.current = 2;
     const leadOutput = agentContent["team_lead"] || "";
     const dispatch = parseDispatch(leadOutput);
+    console.log("[Dispatch] parsed:", dispatch);
     const agents = dispatch?.agents || classifyIntent(message);
-    // Pass dispatch note as part of message for engineer context
     const effectiveMsg = dispatch?.note ? `${message}\n\n[团队领导指示: ${dispatch.note}]` : message;
     for (const agent of agents) {
       if (agent === "team_lead") continue;
-      await streamChat([agent], agentMsgIds, agentContent, effectiveMsg);
+      const ok = await streamChat([agent], agentMsgIds, agentContent, effectiveMsg);
+      if (!ok) { setBusy(false); return; }
     }
 
     // Step 3: Team Lead report — new ID so it's a separate bubble
