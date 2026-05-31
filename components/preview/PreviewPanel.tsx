@@ -10,6 +10,7 @@ import JSZip from "jszip";
 interface PreviewPanelProps {
   code: string;
   projectName?: string;
+  onError?: (error: string) => void;
 }
 
 const EMPTY_HTML = `<!DOCTYPE html>
@@ -57,7 +58,10 @@ function __showError(msg) {
   box.style.display = 'block';
   box.textContent = '\\u8fd0\\u884c\\u51fa\\u9519:\\n' + msg;
 }
-window.addEventListener('error', function(e) { __showError(e.message || String(e.error)); });
+window.addEventListener('error', function(e) {
+  __showError(e.message || String(e.error));
+  window.parent.postMessage({ type: 'preview-error', error: e.message || String(e.error) }, '*');
+});
 try {
 ${code}
 
@@ -65,18 +69,30 @@ var __root = ReactDOM.createRoot(document.getElementById('root'));
 __root.render(React.createElement(App));
 } catch (err) {
   __showError(err && err.message ? err.message : String(err));
+  window.parent.postMessage({ type: 'preview-error', error: err && err.message ? err.message : String(err) }, '*');
 }
 <\/script>
 </body>
 </html>`;
 }
 
-export function PreviewPanel({ code, projectName }: PreviewPanelProps) {
+export function PreviewPanel({ code, projectName, onError }: PreviewPanelProps) {
   const [key, setKey] = useState(0);
 
   useEffect(() => {
     console.log("[Preview] code state changed, length:", code?.length || 0);
   }, [code]);
+
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'preview-error') {
+        console.warn("[Preview] iframe runtime error:", e.data.error);
+        onError?.(e.data.error);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [onError]);
 
   const srcDoc = useMemo(
     () => (code ? buildSrcDoc(code) : EMPTY_HTML),

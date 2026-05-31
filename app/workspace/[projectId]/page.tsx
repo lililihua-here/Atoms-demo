@@ -397,7 +397,16 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
 
         {/* Preview */}
         <div className="min-w-0 h-full overflow-hidden hidden md:block">
-          <PreviewPanel code={code} projectName={projectName} />
+          <PreviewPanel code={code} projectName={projectName}
+            onError={(err) => {
+              setMessages((prev) => [...prev, {
+                id: `preview-error-${Date.now()}`,
+                role: "system",
+                content: `预览运行错误: ${err}`,
+                timestamp: new Date().toISOString(),
+              }]);
+            }}
+          />
         </div>
         {memoryOpen && (
           <div className="md:hidden border-t border-border/20">

@@ -309,6 +309,27 @@ function buildSubtaskContent(
   return parts.join("\n\n");
 }
 
+// Validate extracted code for common issues
+export function validateCode(code: string): { ok: boolean; issues: string[] } {
+  const issues: string[] = [];
+  if (!code || code.length < 20) issues.push("代码过短");
+  if (!/function\s+App\s*\(/.test(code) && !/const\s+App\s*=/.test(code))
+    issues.push("缺少 App 组件定义");
+  if (!/ReactDOM\.createRoot|__root\.render/.test(code))
+    issues.push("缺少挂载代码 (ReactDOM.createRoot)");
+  // Check bracket balance
+  let brace = 0, paren = 0;
+  for (const ch of code) {
+    if (ch === '{') brace++;
+    if (ch === '}') brace--;
+    if (ch === '(') paren++;
+    if (ch === ')') paren--;
+  }
+  if (brace !== 0) issues.push(`花括号不平衡 (差值: ${brace})`);
+  if (paren !== 0) issues.push(`圆括号不平衡 (差值: ${paren})`);
+  return { ok: issues.length === 0, issues };
+}
+
 // Extract JSX code from markdown output
 export function extractCode(markdown: string): string | null {
   if (!markdown) return null;
@@ -455,7 +476,10 @@ export async function runPipeline(
 
       const code = extractCode(content);
       if (code) {
-        console.log("runPipeline: code extracted, length:", code.length);
+        const validation = validateCode(code);
+        if (!validation.ok) {
+          console.warn("Code validation issues:", validation.issues);
+        }
         cbs.onCode(code);
       } else {
         console.log("runPipeline: extractCode failed, engineer output first 300 chars:", content.substring(0, 300));
