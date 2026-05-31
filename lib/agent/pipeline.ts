@@ -157,7 +157,6 @@ export async function runPipeline(
       if (mergedCode) {
         content = `> 已通过组件级并行生成并合并代码。\n\n\`\`\`jsx\n${mergedCode}\n\`\`\``;
         cbs.onChunk(role, content);
-        engMetrics = { duration_ms: 0, input_tokens: 0, output_tokens: 0 };
       } else {
         // Fallback to serial full-app Engineer
         const result = await streamAgent(role, ROLE_SYSTEM[role], userContent, cbs);

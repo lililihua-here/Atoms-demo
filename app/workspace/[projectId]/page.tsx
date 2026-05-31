@@ -308,15 +308,12 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
     const agents = parseDispatch(leadOutput) || classifyIntent(message);
     for (const agent of agents) {
       if (agent === "team_lead") continue;
-      const ok = await streamChat([agent], agentMsgIds, agentContent, message);
-      if (!ok) break;  // stop button pressed, abort remaining agents
+      await streamChat([agent], agentMsgIds, agentContent, message);
     }
 
-    // Step 3: Team Lead report — only if not aborted
-    if (busy) {
-      agentMsgIds["team_lead"] = `agent-${ts}-lead-report`;
-      await streamChat(["team_lead"], agentMsgIds, agentContent, message);
-    }
+    // Step 3: Team Lead report — new ID so it's a separate bubble
+    agentMsgIds["team_lead"] = `agent-${ts}-lead-report`;
+    await streamChat(["team_lead"], agentMsgIds, agentContent, message);
   };
 
   const handleResume = () => {
