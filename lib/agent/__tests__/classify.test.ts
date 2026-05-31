@@ -22,7 +22,7 @@ describe('classifyIntent', () => {
 describe('parseDispatch', () => {
   it('parses valid dispatch JSON', () => {
     const output = 'ok\n```dispatch\n{"agents": ["engineer"]}\n```';
-    expect(parseDispatch(output)).toEqual(['engineer']);
+    expect(parseDispatch(output)!.agents).toEqual(['engineer']);
   });
 
   it('returns null for missing dispatch block', () => {
@@ -35,6 +35,16 @@ describe('parseDispatch', () => {
 
   it('parses full pipeline dispatch', () => {
     const output = '```dispatch\n{"agents": ["pm", "architect", "engineer"]}\n```';
-    expect(parseDispatch(output)).toEqual(['pm', 'architect', 'engineer']);
+    const result = parseDispatch(output);
+    expect(result).not.toBeNull();
+    expect(result!.agents).toEqual(['pm', 'architect', 'engineer']);
+  });
+
+  it('extracts note from dispatch', () => {
+    const output = '```dispatch\n{"agents": ["engineer"], "note": "只改按钮颜色"}\n```';
+    const result = parseDispatch(output);
+    expect(result).not.toBeNull();
+    expect(result!.agents).toEqual(['engineer']);
+    expect(result!.note).toBe('只改按钮颜色');
   });
 });
