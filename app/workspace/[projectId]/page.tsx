@@ -233,6 +233,8 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
       };
 
       while (true) {
+        // Check if user pressed stop (AbortController doesn't auto-cancel ReadableStream)
+        if (abortRef.current?.signal.aborted) { try { reader.cancel(); } catch {} break; }
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
@@ -305,7 +307,8 @@ function WorkspaceContent({ projectId }: { projectId: string }) {
     // Step 1: Team Lead dispatch
     currentStepRef.current = 1;
     const ok1 = await streamChat(["team_lead"], agentMsgIds, agentContent, message);
-    if (!ok1) return;
+    console.log("[Dispatch] team_lead ok:", ok1, "output:", (agentContent["team_lead"] || "").substring(0, 200));
+    if (!ok1) { setBusy(false); return; }
 
     // Step 2: Parse dispatch, run agents
     currentStepRef.current = 2;
