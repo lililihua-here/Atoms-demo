@@ -4,7 +4,7 @@ import { streamLLM, callLLM, summarize as summarizeLLM } from "@/lib/llm/async_l
 import { PM_SYSTEM, ARCHITECT_SYSTEM, ENGINEER_SYSTEM, SUMMARY_SYSTEM, MCP_TOOLS_NOTE, LEAD_SYSTEM, LEAD_REPORT_SYSTEM } from "./prompts";
 import { retrieve, formatRetrievedContext } from "./retrieval";
 import { embedText, serializeVector } from "./embedding";
-import { extractContract, buildSubtasks } from "./contract";
+import { buildSubtasks, extractContractWithRepair, validateContract } from "./contract";
 import { mergeComponents, validateSyntax } from "./merge";
 import { buildToolCatalog, renderToolCatalog, resolveToolCalls } from "./mcp";
 import type { AgentRole, AgentDocument, PipelineCallbacks, PipelineContext, ParallelTaskState } from "@/lib/models/types";
@@ -228,8 +228,17 @@ async function runEngineerParallel(
   allDocs: AgentDocument[],
   cbs: PipelineCallbacks
 ): Promise<string | null> {
-  const contract = extractContract(architectOutput);
-  if (!contract) { console.log("runEngineerParallel: no valid contract in architect output"); return null; }
+  const contractResult = extractContractWithRepair(architectOutput);
+  if (!contractResult.contract) {
+    console.log("runEngineerParallel: no valid contract in architect output:", contractResult.error);
+    return null;
+  }
+  if (contractResult.repaired) {
+    console.log("runEngineerParallel: using repaired contract");
+  }
+  const contract = contractResult.contract;
+  const issues = validateContract(contract);
+  if (issues.length > 0) console.log("Contract issues:", issues);
   const subtasks = buildSubtasks(contract);
   if (subtasks.length < MIN_LEAVES_FOR_PARALLEL) {
     console.log("runEngineerParallel: only", subtasks.length, "parallelizable leaves, need", MIN_LEAVES_FOR_PARALLEL);

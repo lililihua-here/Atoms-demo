@@ -95,6 +95,57 @@ export function extractContract(markdown: string): ComponentContract | null {
   }
 }
 
+// Extract contract with aggressive repair fallbacks for unreliable architect output
+export function extractContractWithRepair(markdown: string): { contract: ComponentContract | null; repaired: boolean; error?: string } {
+  // Try existing extractContract first
+  const contract = extractContract(markdown);
+  if (contract) return { contract, repaired: false };
+
+  // Try to find ANY JSON object with "components" key using a more aggressive regex
+  // This handles cases where the JSON is in a non-standard code block or inline
+  const jsonMatch = markdown.match(/\{[\s\S]*"components"\s*:\s*\[[\s\S]*?\][\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const repaired = JSON.parse(jsonMatch[0]);
+      if (repaired && Array.isArray(repaired.components)) {
+        console.log("extractContract: repaired from inline JSON");
+        return { contract: repaired as ComponentContract, repaired: true };
+      }
+    } catch { /* continue */ }
+  }
+
+  // Last resort: try to build a minimal contract from any component names found in the text
+  const componentNames = Array.from(markdown.matchAll(/(?:组件|Component)[：:]\s*(\w+)|`(\w+)`\s*(?:组件|Component)/gi))
+    .map(m => m[1] || m[2])
+    .filter(Boolean);
+  if (componentNames.length >= 2) {
+    console.log("extractContract: building minimal contract from detected component names:", componentNames);
+    const components = componentNames.map(name => ({
+      name,
+      type: "leaf" as const,
+      props: [],
+      has_internal_state: false,
+      dependencies: [],
+    }));
+    return { contract: { components, shared_utilities: [] }, repaired: true };
+  }
+
+  return { contract: null, repaired: false, error: "No valid contract found in architect output" };
+}
+
+// Validate a contract for obvious structural issues
+export function validateContract(contract: ComponentContract): string[] {
+  const issues: string[] = [];
+  if (!contract.components || contract.components.length === 0) {
+    issues.push("contract has no components");
+  }
+  for (const c of contract.components) {
+    if (!c.name || typeof c.name !== "string") issues.push("component missing name");
+    if (!["leaf", "layout", "logic"].includes(c.type)) issues.push(`component ${c.name}: unknown type "${c.type}"`);
+  }
+  return issues;
+}
+
 // A component is a parallelizable leaf when typed "leaf" and has no dependencies
 export function buildSubtasks(contract: ComponentContract): SubTask[] {
   return contract.components
