@@ -151,7 +151,7 @@ export function PreviewPanel({ code, projectName, onError }: PreviewPanelProps) 
             key={key}
             srcDoc={srcDoc}
             className="w-full h-full border-0"
-            sandbox="allow-scripts"
+            sandbox="allow-scripts allow-same-origin"
             title="应用预览"
           />
         </TabsContent>
